@@ -39,7 +39,7 @@ readme = "README.md"
 license = "MIT"
 repository = "https://github.com/lmeller-git/kasino"
 keywords = ["mpmc", "no_std", "atomic", "lock-free"]
-categories = ["data-structures", "algorithms", "concurrency", "no-std"]
+categories = ["data-structures", "algorithms", "concurrency", "no-std::no-alloc"]
 rust-version = "1.85.0"
 
 [features]
