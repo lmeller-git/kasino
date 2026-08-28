@@ -1,4 +1,5 @@
 use core::{
+    cell::Cell,
     marker::PhantomData,
     ops::{Deref, Index},
 };
@@ -228,20 +229,20 @@ impl<S: Strategy<Q>, Q: Collection> Strategy<Q> for DoubleCollect<S> {
     where
         Q: 'c,
     {
-        let mut versions = state.map_to_buffer(|_| None);
+        let versions = state.map_to_buffer(|_| Cell::new(0));
 
         'collect: loop {
-            for (i, item) in state.iter().enumerate() {
+            for (i, (item, epoch_slot)) in state.iter().zip(versions.iter()).enumerate() {
                 let epoch = item.epoch.load(Ordering::Acquire);
                 if let Ok(item) = sub_collections[i].poll(input) {
                     return Some((item, i));
                 }
-                versions[i].replace(epoch);
+                epoch_slot.set(epoch);
             }
 
-            for (stored_epoch, item) in versions.iter().zip(state.iter()) {
+            for (item, stored_epoch) in state.iter().zip(versions.iter()) {
                 let epoch = item.epoch.load(Ordering::Acquire);
-                if stored_epoch.is_some_and(|e| e < epoch) {
+                if stored_epoch.get() < epoch {
                     continue 'collect;
                 }
             }

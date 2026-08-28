@@ -1,11 +1,11 @@
 //! Storage abstractions for different kinds of storages
 
-use core::ops::{Index, IndexMut};
+use core::ops::Index;
 
 /// a generic storage
 pub trait StorageBackend<T>: Index<usize, Output = T> + IntoIterator {
     /// A generic storage backend, which this storagebackend knows how to construct
-    type Rebind<U>: StorageBackend<U> + IndexMut<usize>;
+    type Rebind<U>: StorageBackend<U>;
 
     /// the current length of the storage
     fn len(&self) -> usize;
