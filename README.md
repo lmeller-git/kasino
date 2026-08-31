@@ -7,19 +7,15 @@
 
 # Kasino
 
-
 <!-- cargo-rdme start -->
 
-A construction that elastically relaxes a given collection.
+`Kasino` is a framework for building high-contention concurrent data structures.
 
-`Kasino` aims to improve performance of concurrent datastructures by sharding operations into multiple subqueues.
-This process introduces a relaxation of the wrapped datastructure, the specifics depending on the used strategy.
+By distributing operations across multiple sub-collections using customizable strategies, `Kasino` reduces cache-line invalidation and thread contention.
 
-Strategies optimize for performance and relaxation bounds, but can be implemented to optimize for other properties.
+`Kasino` provides out-of-the-box support for elastically relaxed concurrent queues, while also offering a framework to implement other sharded concurrent data structures.
 
-Multiple strategies, amenable to different kinds of datastructures and requirements are provided.
-
-Additionally an interface for defining custom strategies is available.
+Built-in strategies optimize for different tradeoffs between performance and relaxation bounds.
 
 ### Usage
 
@@ -59,7 +55,7 @@ For an empirical analysis of the rank errors, refer to [relaxed-queue-simulation
 
 ### Performance
 
-Sharding operations to multiple sub-collections incurs both memory cost, as well as additional overhead. Under low contention `Kasino` is slower than the raw collection, with the decrease in performance depending strongly on chosen [`strategy::Strategy`](https://docs.rs/kasino/latest/kasino/strategy/trait.Strategy.html).
+Sharding operations to multiple sub-collections incurs both memory cost, as well as additional overhead. Under low contention `Kasino` is slower than the raw data structure, with the decrease in performance depending strongly on chosen [`strategy::Strategy`](https://docs.rs/kasino/latest/kasino/strategy/trait.Strategy.html).
 
 However, scheduling thread access across multiple sub-collections allows to reduce cache-line invalidation at high contention, improving performance as thread count increases.
 

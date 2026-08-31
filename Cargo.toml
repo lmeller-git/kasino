@@ -33,7 +33,7 @@ members = [
 [workspace.package]
 edition = "2024"
 authors = ["Louis Meller <louis.meller@icloud.com>"]
-description = "Framework for implementing sharded concurrent datastructures."
+description = "Strategy-driven framework for high-contention concurrent data structures."
 documentation = "https://docs.rs/kasino"
 readme = "README.md"
 license = "MIT"
