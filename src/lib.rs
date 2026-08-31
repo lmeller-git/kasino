@@ -62,13 +62,13 @@
 //!
 //! ### Progress Guarantees:
 //!
-//! - **Lock Freedom**: if the wrapped collection is lock-free, `Bandits` are also lock-free.
-//! - **Obstruction Freedom**: if the wrapped collection exposes obstruction-free methods, all corresponding operations on `Bandits` are also obstruction-free.
+//! - **Lock Freedom**: if the wrapped collection is lock-free, [`Bandit`]'s are also lock-free.
+//! - **Obstruction Freedom**: if the wrapped collection exposes obstruction-free methods, all corresponding operations on [`Bandit`]'s are also obstruction-free.
 //!
 //! ### Ordering and Consistency Guarantees:
 //!
-//! - **Relaxed Specification**: if the wrapped collection has some specification, `Bandits` relax that specification based on the chosen strategy.
-//! - **Linearizability**: if the wrapped collection is linearizable, all operations on `Bandits` are also linearizable with respect to their relaxed specification.
+//! - **Relaxed Specification**: if the wrapped collection has some specification, [`Bandit`]'s relax that specification based on the chosen strategy.
+//! - **Linearizability**: if the wrapped collection is linearizable, all operations on [`Bandit`]'s are also linearizable with respect to their relaxed specification.
 //!
 //! ### Relaxation
 //!
@@ -81,18 +81,18 @@
 //!
 //! ## Performance
 //!
-//! Sharding operations to multiple sub-collections incurs both memory cost, as well as additional overhead. Under low contention `Kasino` is slower than the raw collection.
+//! Sharding operations to multiple sub-collections incurs both memory cost, as well as additional overhead. Under low contention `Kasino` is slower than the raw collection, with the decrease in performance depending strongly on chosen [`strategy::Strategy`].
 //!
 //! However, scheduling thread access across multiple sub-collections allows to reduce cache-line invalidation at high contention, improving performance as thread count increases.
 //!
 //! ## Limitations
 //!
-//! - Currently an instantiated `Bandit` cannot be resized. Its capacity is fixed at construction time.
-//! - The capacity of each sub-collection is fixed statically. The total capacity of a `Bandit` is constrained to a multiple of this.
+//! - Currently an instantiated [`Bandit`] cannot be resized. Its capacity is fixed at construction time.
+//! - The capacity of each sub-collection is fixed statically. The total capacity of a [`Bandit`] is constrained to a multiple of this.
 //!
 //! ## Advanced Usage
 //!
-//! The interfaces for [`Collection`], [`strategy::Strategy`] and `Bandit` are general enough to support the implementation of a large set of datastructures. For examples of this consult `examples/`.
+//! The interfaces for [`Collection`], [`strategy::Strategy`] and [`Bandit`] are general enough to support the implementation of a large set of datastructures. For examples of this consult [`examples`](https://github.com/lmeller-git/kasino/tree/main/examples).
 //!
 //! ## Platform Support
 //!

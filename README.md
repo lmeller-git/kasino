@@ -40,13 +40,13 @@ assert!(handle.poll(()).is_ok());
 
 #### Progress Guarantees:
 
-- **Lock Freedom**: if the wrapped collection is lock-free, `Bandits` are also lock-free.
-- **Obstruction Freedom**: if the wrapped collection exposes obstruction-free methods, all corresponding operations on `Bandits` are also obstruction-free.
+- **Lock Freedom**: if the wrapped collection is lock-free, [`Bandit`](https://docs.rs/kasino/latest/kasino/construction/struct.Bandit.html)'s are also lock-free.
+- **Obstruction Freedom**: if the wrapped collection exposes obstruction-free methods, all corresponding operations on [`Bandit`](https://docs.rs/kasino/latest/kasino/construction/struct.Bandit.html)'s are also obstruction-free.
 
 #### Ordering and Consistency Guarantees:
 
-- **Relaxed Specification**: if the wrapped collection has some specification, `Bandits` relax that specification based on the chosen strategy.
-- **Linearizability**: if the wrapped collection is linearizable, all operations on `Bandits` are also linearizable with respect to their relaxed specification.
+- **Relaxed Specification**: if the wrapped collection has some specification, [`Bandit`](https://docs.rs/kasino/latest/kasino/construction/struct.Bandit.html)'s relax that specification based on the chosen strategy.
+- **Linearizability**: if the wrapped collection is linearizable, all operations on [`Bandit`](https://docs.rs/kasino/latest/kasino/construction/struct.Bandit.html)'s are also linearizable with respect to their relaxed specification.
 
 #### Relaxation
 
@@ -59,18 +59,18 @@ For an empirical analysis of the rank errors, refer to [relaxed-queue-simulation
 
 ### Performance
 
-Sharding operations to multiple sub-collections incurs both memory cost, as well as additional overhead. Under low contention `Kasino` is slower than the raw collection.
+Sharding operations to multiple sub-collections incurs both memory cost, as well as additional overhead. Under low contention `Kasino` is slower than the raw collection, with the decrease in performance depending strongly on chosen [`strategy::Strategy`](https://docs.rs/kasino/latest/kasino/strategy/trait.Strategy.html).
 
 However, scheduling thread access across multiple sub-collections allows to reduce cache-line invalidation at high contention, improving performance as thread count increases.
 
 ### Limitations
 
-- Currently an instantiated `Bandit` cannot be resized. Its capacity is fixed at construction time.
-- The capacity of each sub-collection is fixed statically. The total capacity of a `Bandit` is constrained to a multiple of this.
+- Currently an instantiated [`Bandit`](https://docs.rs/kasino/latest/kasino/construction/struct.Bandit.html) cannot be resized. Its capacity is fixed at construction time.
+- The capacity of each sub-collection is fixed statically. The total capacity of a [`Bandit`](https://docs.rs/kasino/latest/kasino/construction/struct.Bandit.html) is constrained to a multiple of this.
 
 ### Advanced Usage
 
-The interfaces for [`Collection`](https://docs.rs/kasino/latest/kasino/trait.Collection.html), [`strategy::Strategy`](https://docs.rs/kasino/latest/kasino/strategy/trait.Strategy.html) and `Bandit` are general enough to support the implementation of a large set of datastructures. For examples of this consult `examples/`.
+The interfaces for [`Collection`](https://docs.rs/kasino/latest/kasino/trait.Collection.html), [`strategy::Strategy`](https://docs.rs/kasino/latest/kasino/strategy/trait.Strategy.html) and [`Bandit`](https://docs.rs/kasino/latest/kasino/construction/struct.Bandit.html) are general enough to support the implementation of a large set of datastructures. For examples of this consult [`examples`](https://github.com/lmeller-git/kasino/tree/main/examples).
 
 ### Platform Support
 

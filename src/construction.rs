@@ -39,7 +39,8 @@ where
     B: StorageBackend<Q>,
 {
     /// returns the number of sub collections
-    pub(crate) fn arm_count(&self) -> usize {
+    #[inline]
+    pub fn arm_count(&self) -> usize {
         self.sub_collections.len()
     }
 }
@@ -53,6 +54,7 @@ where
     ///
     /// This method should only be called once per thread pool.
     /// Create more handles using [`BanditHandle::fork`].
+    #[inline]
     pub fn buy_in(&self) -> BanditHandle<'_, Q, S, B, C, SUB_CAP> {
         BanditHandle {
             parent: self,
@@ -66,6 +68,7 @@ where
     B: StorageBackend<Q>,
 {
     /// Consumes this collection and returns an iterator over its arms.
+    #[inline]
     pub fn into_arms(self) -> impl Iterator<Item = B::Item> {
         self.sub_collections.into_iter()
     }
@@ -77,6 +80,7 @@ where
     B: IntoIterator<Item = Q>,
 {
     /// Consumes this collection and returns an iterator over all contained items.
+    #[inline]
     pub fn into_items(self) -> impl Iterator<Item = Q::Item> {
         self.sub_collections
             .into_iter()

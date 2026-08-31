@@ -81,7 +81,7 @@ impl<T> IndexMut<usize> for BoxedStorage<T> {
     }
 }
 
-/// a handle to the core subcollection container, which is stored dynamically
+/// A handle to a [`BoxedBandit`].
 #[expect(type_alias_bounds)]
 pub type BoxedBanditHandle<
     'a,
