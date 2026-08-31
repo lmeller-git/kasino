@@ -3,7 +3,7 @@ use core::ops::{Index, IndexMut};
 use crate::{
     Collection,
     WithCapacity,
-    construction::{BanditCore, BanditHandle, DEFAULT_QUEUE_CAP},
+    construction::{Bandit, BanditHandle, DEFAULT_QUEUE_CAP},
     storage::StorageBackend,
     strategy::{Hooked, Strategy},
 };
@@ -100,20 +100,13 @@ pub type InlineBanditHandle<
 >;
 
 /// A container of `N` sub collections that is stored inline.
-pub struct InlineBandit<
+#[expect(type_alias_bounds)]
+pub type InlineBandit<
     Q: Collection,
     S: Strategy<Q>,
     const N: usize,
     const SUB_CAP: usize = DEFAULT_QUEUE_CAP,
-> {
-    raw: BanditCore<
-        Q,
-        S,
-        InlineStorage<Q, N>,
-        InlineStorage<<S::Gambler as Hooked>::Stake, N>,
-        SUB_CAP,
-    >,
-}
+> = Bandit<Q, S, InlineStorage<Q, N>, InlineStorage<<S::Gambler as Hooked>::Stake, N>, SUB_CAP>;
 
 impl<Q: Collection, S, const N: usize, const SUB_CAP: usize> InlineBandit<Q, S, N, SUB_CAP>
 where
@@ -130,21 +123,10 @@ where
                 "The number of arms and the capacity per arm should be > 0"
             );
         }
-        Self {
-            raw: BanditCore::new_with(
-                InlineStorage::from_fn(|_| <Q as WithCapacity<SUB_CAP>>::with_capacity()),
-                InlineStorage::from_fn(|_| Default::default()),
-            ),
-        }
-    }
-
-    /// constructs a new handle to this `InlineBandit`.
-    ///
-    /// This method should only be called once per thread pool.
-    /// Create more handles using [`InlineBanditHandle::fork`].
-    #[inline]
-    pub fn buy_in(&self) -> InlineBanditHandle<'_, Q, S, N, SUB_CAP> {
-        self.raw.buy_in()
+        Bandit::new_with(
+            InlineStorage::from_fn(|_| <Q as WithCapacity<SUB_CAP>>::with_capacity()),
+            InlineStorage::from_fn(|_| Default::default()),
+        )
     }
 }
 
@@ -157,29 +139,5 @@ where
     #[inline]
     fn default() -> Self {
         Self::new()
-    }
-}
-
-impl<Q, S, const N: usize, const SUB_CAP: usize> InlineBandit<Q, S, N, SUB_CAP>
-where
-    Q: Collection,
-    S: Strategy<Q>,
-{
-    /// Consumes this collection and returns an iterator over its arms.
-    #[inline]
-    pub fn into_arms(self) -> impl Iterator<Item = <InlineStorage<Q, N> as IntoIterator>::Item> {
-        self.raw.into_arms()
-    }
-}
-
-impl<Q, S, const N: usize, const SUB_CAP: usize> InlineBandit<Q, S, N, SUB_CAP>
-where
-    Q: Collection + IntoIterator,
-    S: Strategy<Q>,
-{
-    /// Consumes this collection and returns an iterator over all contained items.
-    #[inline]
-    pub fn into_items(self) -> impl Iterator<Item = Q::Item> {
-        self.raw.into_items()
     }
 }

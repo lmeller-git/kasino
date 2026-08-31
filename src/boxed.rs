@@ -4,7 +4,7 @@ use core::ops::{Index, IndexMut};
 use crate::{
     Collection,
     WithCapacity,
-    construction::{BanditCore, BanditHandle, DEFAULT_QUEUE_CAP},
+    construction::{Bandit, BanditHandle, DEFAULT_QUEUE_CAP},
     storage::StorageBackend,
     strategy::{Hooked, Strategy},
 };
@@ -91,9 +91,9 @@ pub type BoxedBanditHandle<
 > = BanditHandle<'a, Q, S, BoxedStorage<Q>, BoxedStorage<<S::Gambler as Hooked>::Stake>, SUB_CAP>;
 
 /// a subcollection container, which is stored dynamically
-pub struct BoxedBandit<Q: Collection, S: Strategy<Q>, const SUB_CAP: usize = DEFAULT_QUEUE_CAP> {
-    raw: BanditCore<Q, S, BoxedStorage<Q>, BoxedStorage<<S::Gambler as Hooked>::Stake>, SUB_CAP>,
-}
+#[expect(type_alias_bounds)]
+pub type BoxedBandit<Q: Collection, S: Strategy<Q>, const SUB_CAP: usize = DEFAULT_QUEUE_CAP> =
+    Bandit<Q, S, BoxedStorage<Q>, BoxedStorage<<S::Gambler as Hooked>::Stake>, SUB_CAP>;
 
 impl<Q, S, const SUB_CAP: usize> BoxedBandit<Q, S, SUB_CAP>
 where
@@ -110,47 +110,12 @@ where
         }
 
         assert!(n_cores > 0, "The number of arms should be > 0");
-        Self {
-            raw: BanditCore::new_with(
-                BoxedStorage::from_fn_and_size(
-                    |_| <Q as WithCapacity<SUB_CAP>>::with_capacity(),
-                    n_cores,
-                ),
-                BoxedStorage::from_fn_and_size(|_| Default::default(), n_cores),
+        Self::new_with(
+            BoxedStorage::from_fn_and_size(
+                |_| <Q as WithCapacity<SUB_CAP>>::with_capacity(),
+                n_cores,
             ),
-        }
-    }
-
-    /// constructs a new handle to this container
-    ///
-    /// This method should only be called once per thread pool.
-    /// Create more handles using [`BoxedBanditHandle::fork`].
-    #[inline]
-    pub fn buy_in(&self) -> BoxedBanditHandle<'_, Q, S, SUB_CAP> {
-        self.raw.buy_in()
-    }
-}
-
-impl<Q, S, const SUB_CAP: usize> BoxedBandit<Q, S, SUB_CAP>
-where
-    Q: Collection,
-    S: Strategy<Q>,
-{
-    /// Consumes this collection and returns an iterator over its arms.
-    #[inline]
-    pub fn into_arms(self) -> impl Iterator<Item = <BoxedStorage<Q> as IntoIterator>::Item> {
-        self.raw.into_arms()
-    }
-}
-
-impl<Q, S, const SUB_CAP: usize> BoxedBandit<Q, S, SUB_CAP>
-where
-    Q: Collection + IntoIterator,
-    S: Strategy<Q>,
-{
-    /// Consumes this collection and returns an iterator over all contained items.
-    #[inline]
-    pub fn into_items(self) -> impl Iterator<Item = Q::Item> {
-        self.raw.into_items()
+            BoxedStorage::from_fn_and_size(|_| Default::default(), n_cores),
+        )
     }
 }

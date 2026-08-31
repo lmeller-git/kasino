@@ -160,7 +160,7 @@ pub mod prelude {
 
 #[cfg(feature = "alloc")]
 pub use boxed::*;
-pub use construction::BanditHandle;
+pub use construction::{Bandit, BanditHandle};
 pub use inline::*;
 
 /// Description about the signature of a failable method

@@ -10,15 +10,17 @@ use crate::{
 
 pub(crate) const DEFAULT_QUEUE_CAP: usize = 32;
 
+/// A [`Bandit`] distributes accesses to the wrapped datastructure across N sub-collections.
+/// Access is distribute according to the [`Strategy`] `S` over the sub-collections `B` using state `C`.
 #[derive(PartialEq, Eq, PartialOrd, Ord, Debug, Clone, Hash)]
-pub(crate) struct BanditCore<Q, S, B, C, const SUB_CAP: usize = DEFAULT_QUEUE_CAP> {
+pub struct Bandit<Q, S, B, C, const SUB_CAP: usize = DEFAULT_QUEUE_CAP> {
     strategy: S,
     sub_collections: B,
     collection_state: C,
     _p: PhantomData<Q>,
 }
 
-impl<Q, S, B, C, const SUB_CAP: usize> BanditCore<Q, S, B, C, SUB_CAP>
+impl<Q, S, B, C, const SUB_CAP: usize> Bandit<Q, S, B, C, SUB_CAP>
 where
     S: Default,
 {
@@ -32,7 +34,7 @@ where
     }
 }
 
-impl<Q, S, B, C, const SUB_CAP: usize> BanditCore<Q, S, B, C, SUB_CAP>
+impl<Q, S, B, C, const SUB_CAP: usize> Bandit<Q, S, B, C, SUB_CAP>
 where
     B: StorageBackend<Q>,
 {
@@ -42,12 +44,16 @@ where
     }
 }
 
-impl<Q, S, B, C, const SUB_CAP: usize> BanditCore<Q, S, B, C, SUB_CAP>
+impl<Q, S, B, C, const SUB_CAP: usize> Bandit<Q, S, B, C, SUB_CAP>
 where
     S: Strategy<Q>,
     Q: Collection,
 {
-    pub(crate) fn buy_in(&self) -> BanditHandle<'_, Q, S, B, C, SUB_CAP> {
+    /// constructs a new handle to this container
+    ///
+    /// This method should only be called once per thread pool.
+    /// Create more handles using [`BanditHandle::fork`].
+    pub fn buy_in(&self) -> BanditHandle<'_, Q, S, B, C, SUB_CAP> {
         BanditHandle {
             parent: self,
             gambler: self.strategy.create_gambler(),
@@ -55,21 +61,23 @@ where
     }
 }
 
-impl<Q, S, B, C, const SUB_CAP: usize> BanditCore<Q, S, B, C, SUB_CAP>
+impl<Q, S, B, C, const SUB_CAP: usize> Bandit<Q, S, B, C, SUB_CAP>
 where
     B: StorageBackend<Q>,
 {
-    pub(crate) fn into_arms(self) -> impl Iterator<Item = B::Item> {
+    /// Consumes this collection and returns an iterator over its arms.
+    pub fn into_arms(self) -> impl Iterator<Item = B::Item> {
         self.sub_collections.into_iter()
     }
 }
 
-impl<Q, S, B, C, const SUB_CAP: usize> BanditCore<Q, S, B, C, SUB_CAP>
+impl<Q, S, B, C, const SUB_CAP: usize> Bandit<Q, S, B, C, SUB_CAP>
 where
     Q: IntoIterator,
     B: IntoIterator<Item = Q>,
 {
-    pub(crate) fn into_items(self) -> impl Iterator<Item = Q::Item> {
+    /// Consumes this collection and returns an iterator over all contained items.
+    pub fn into_items(self) -> impl Iterator<Item = Q::Item> {
         self.sub_collections
             .into_iter()
             .flat_map(|collection| collection.into_iter())
@@ -89,7 +97,7 @@ pub struct BanditHandle<
     C,
     const SUB_CAP: usize = DEFAULT_QUEUE_CAP,
 > {
-    parent: &'a BanditCore<Q, S, B, C, SUB_CAP>,
+    parent: &'a Bandit<Q, S, B, C, SUB_CAP>,
     gambler: S::Gambler,
 }
 
@@ -173,7 +181,7 @@ where
     /// Makes a call to [`Self::poll`] and returns the index associated with the arm we pulled.
     #[expect(clippy::type_complexity)]
     pub(crate) fn poll_internal<'b, 'c>(
-        parent: &'c BanditCore<Q, S, B, C, SUB_CAP>,
+        parent: &'c Bandit<Q, S, B, C, SUB_CAP>,
         gambler: &mut S::Gambler,
         input: <Q::PollSignature as Signature>::Input<'b>,
     ) -> (
