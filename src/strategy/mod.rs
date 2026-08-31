@@ -8,7 +8,7 @@ mod round_robin;
 
 use core::ops::{Deref, DerefMut};
 
-pub use collect::{DoubleCollect, NoCollect};
+pub use collect::{DoubleCollect, NoCollect, policy};
 use crossbeam_utils::CachePadded;
 pub use dcbo::DCBO;
 pub use dra::DRA;

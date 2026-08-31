@@ -138,11 +138,55 @@ impl<'a, B, T, K> IntoIterator for StorageView<'a, B, T, K> {
     }
 }
 
+pub mod policy {
+    //! Policies dictating when global state must be rechecked by a collection strategy.
+
+    /// A policy that dictates that the global state needs to be rechecked if a concurrent call to [`crate::Collection::offer`] happens.
+    #[derive(Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Clone, Copy)]
+    pub struct OfferOnly;
+    /// A policy that dictates that the global state needs to be rechecked if a concurrent call to [`crate::Collection::poll`] happens.
+    #[derive(Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Clone, Copy)]
+    pub struct PollOnly;
+    /// A policy that dictates that the global state needs to be rechecked if a concurrent call to [`crate::Collection::offer`] or [`crate::Collection::poll`] happens.
+    #[derive(Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Clone, Copy)]
+    pub struct OfferAndPoll;
+
+    pub(crate) trait InvalidationPolicy {
+        const INVALIDATE_ON_POLL: bool;
+        const INVALIDATE_ON_OFFER: bool;
+    }
+
+    impl InvalidationPolicy for OfferOnly {
+        const INVALIDATE_ON_OFFER: bool = true;
+        const INVALIDATE_ON_POLL: bool = false;
+    }
+
+    impl InvalidationPolicy for OfferAndPoll {
+        const INVALIDATE_ON_OFFER: bool = true;
+        const INVALIDATE_ON_POLL: bool = true;
+    }
+
+    impl InvalidationPolicy for PollOnly {
+        const INVALIDATE_ON_OFFER: bool = false;
+        const INVALIDATE_ON_POLL: bool = true;
+    }
+}
+
+use policy::{InvalidationPolicy, OfferOnly};
+
 /// Runs a double collect on a failed poll.
 ///
 /// This strategy promises empty-linearizability, given the same holds for the raw [`Collection`].
 #[derive(Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Clone, Copy)]
-pub struct DoubleCollect<S>(S);
+pub struct DoubleCollect<S, P = OfferOnly>(S, PhantomData<P>);
+
+impl<S, P> DoubleCollect<S, P> {
+    /// Constructs a new `DoubleCollect`.
+    #[inline]
+    pub const fn new(strategy: S) -> Self {
+        Self(strategy, PhantomData)
+    }
+}
 
 #[expect(unnameable_types)]
 pub struct DoubleCollectGambler<A> {
@@ -176,7 +220,7 @@ impl<T: Hook> Hook for DoubleCollectState<T> {
     }
 }
 
-impl<S: Strategy<Q>, Q: Collection> Strategy<Q> for DoubleCollect<S> {
+impl<S: Strategy<Q>, Q: Collection, P: InvalidationPolicy> Strategy<Q> for DoubleCollect<S, P> {
     type Gambler = DoubleCollectGambler<S::Gambler>;
 
     #[inline]
@@ -188,7 +232,9 @@ impl<S: Strategy<Q>, Q: Collection> Strategy<Q> for DoubleCollect<S> {
         let idx = self
             .0
             .choose_offer_arm(&StorageView::new(state), &mut gambler.gambler);
-        state[idx].epoch.fetch_add(1, Ordering::Release);
+        if P::INVALIDATE_ON_OFFER {
+            state[idx].epoch.fetch_add(1, Ordering::Release);
+        }
         idx
     }
 
@@ -201,7 +247,9 @@ impl<S: Strategy<Q>, Q: Collection> Strategy<Q> for DoubleCollect<S> {
         let idx = self
             .0
             .choose_poll_arm(&StorageView::new(state), &mut gambler.gambler);
-        state[idx].epoch.fetch_add(1, Ordering::Release);
+        if P::INVALIDATE_ON_POLL {
+            state[idx].epoch.fetch_add(1, Ordering::Release);
+        }
         idx
     }
 
