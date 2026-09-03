@@ -5,18 +5,57 @@ use core::{
 
 use rand::{RngExt, SeedableRng, rngs::SmallRng};
 
+#[cfg(not(target_has_atomic = "64"))]
+use crate::sync::atomic::AtomicU32;
+#[cfg(target_has_atomic = "64")]
+use crate::sync::atomic::AtomicU64;
 use crate::{
     Collection,
     storage::StorageBackend,
     strategy::{Hooked, InstrumentedState, NoPad, Strategy},
-    sync::atomic::{AtomicU64, Ordering},
+    sync::atomic::Ordering,
 };
 
+#[cfg(target_has_atomic = "64")]
+pub(crate) type FastPRNG = SplitMix64;
+#[cfg(not(target_has_atomic = "64"))]
+pub(crate) type FastPRNG = SplitMix32;
+
+#[cfg(not(target_has_atomic = "64"))]
+#[derive(Debug)]
+pub(crate) struct SplitMix32(AtomicU32);
+
+#[cfg(not(target_has_atomic = "64"))]
+impl SplitMix32 {
+    pub(crate) fn next_word(&self) -> u32 {
+        let mut v = self.0.fetch_add(0x9E3779B9, Ordering::Relaxed) as u64;
+        v = (v ^ (v >> 16)).wrapping_mul(0xFF51_AFD7_ED55_8CCD);
+        v = (v ^ (v >> 16)).wrapping_mul(0xC4CE_B9FE_1A85_EC53);
+        (v ^ (v >> 16)) as u32
+    }
+}
+
+#[cfg(not(target_has_atomic = "64"))]
+impl Default for SplitMix32 {
+    fn default() -> Self {
+        Self(0x9E3779B9.into())
+    }
+}
+
+#[cfg(not(target_has_atomic = "64"))]
+impl From<u32> for SplitMix32 {
+    fn from(value: u32) -> Self {
+        Self(value.into())
+    }
+}
+
+#[cfg(target_has_atomic = "64")]
 #[derive(Debug)]
 pub(crate) struct SplitMix64(AtomicU64);
 
+#[cfg(target_has_atomic = "64")]
 impl SplitMix64 {
-    pub(crate) fn next_u64(&self) -> u64 {
+    pub(crate) fn next_word(&self) -> u64 {
         let mut v = self.0.fetch_add(0x9e3779b97f4a7c15, Ordering::Relaxed);
         v = (v ^ (v >> 30)).wrapping_mul(0xbf58476d1ce4e5b9);
         v = (v ^ (v >> 27)).wrapping_mul(0x94d049bb133111eb);
@@ -24,12 +63,14 @@ impl SplitMix64 {
     }
 }
 
+#[cfg(target_has_atomic = "64")]
 impl Default for SplitMix64 {
     fn default() -> Self {
         Self(0x9e3779b97f4a7c15.into())
     }
 }
 
+#[cfg(target_has_atomic = "64")]
 impl From<u64> for SplitMix64 {
     fn from(value: u64) -> Self {
         Self(value.into())
@@ -39,7 +80,7 @@ impl From<u64> for SplitMix64 {
 #[derive(Debug)]
 pub(crate) struct PerThreadRng<R = SmallRng> {
     rng: R,
-    current_seed: SplitMix64,
+    current_seed: FastPRNG,
 }
 
 impl<S> Default for PerThreadRng<S>
@@ -71,7 +112,7 @@ impl<R> DerefMut for PerThreadRng<R> {
 
 impl<R: SeedableRng + rand::Rng> PerThreadRng<R> {
     pub(crate) fn fork_thread(&self) -> Self {
-        let my_seed = self.current_seed.next_u64();
+        let my_seed = self.current_seed.next_word();
         let my_rng = R::seed_from_u64(my_seed);
 
         Self {

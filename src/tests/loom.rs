@@ -20,7 +20,7 @@ pub(crate) fn linearizable<Q>(q: Q)
 where
     Q: MutAccessForkCollection<Item = u32> + Sync + Send + 'static,
 {
-    const COUNT: usize = 1;
+    const COUNT: usize = 2;
     const THREADS: usize = 2;
 
     let mut threads = Vec::new();

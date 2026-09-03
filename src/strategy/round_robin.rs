@@ -1,7 +1,7 @@
 use crate::{
     Collection,
     storage::StorageBackend,
-    strategy::{Hooked, InstrumentedState, NoPad, Strategy, random::SplitMix64},
+    strategy::{Hooked, InstrumentedState, NoPad, Strategy, random::FastPRNG},
 };
 
 /// A round robin scheduler.
@@ -14,7 +14,7 @@ pub struct RoundRobin;
 #[derive(Default, Debug)]
 pub struct RoundRobinGambler {
     cur: usize,
-    fork_state: SplitMix64,
+    fork_state: FastPRNG,
 }
 
 impl RoundRobinGambler {
@@ -49,7 +49,7 @@ impl<Q: Collection> Strategy<Q> for RoundRobin {
     #[inline]
     fn fork_gambler(&self, gambler: &Self::Gambler) -> Self::Gambler {
         // TODO this should be better distributed
-        let next_cur = gambler.fork_state.next_u64();
+        let next_cur = gambler.fork_state.next_word();
         RoundRobinGambler {
             cur: next_cur as usize,
             fork_state: next_cur.into(),
