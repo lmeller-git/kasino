@@ -4,6 +4,7 @@
 - [BREAKING] remove aome derives on multiple strategies.
 - [CHANGED] fork on handles no longer requires exclusize access.
 - [CHANGED] improved fork of various strategies to better distribute access of sub collections.
+- [FIXED] fixed race in `DoubleCollect` which lead to empty-linearizability violations.
 
 # Version 0.2.0
 
