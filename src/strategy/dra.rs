@@ -1,10 +1,12 @@
+use core::marker::PhantomData;
+
 use crossbeam_utils::CachePadded;
 use rand::{RngExt, SeedableRng, rngs::SmallRng};
 
 use crate::{
     Collection,
     storage::StorageBackend,
-    strategy::{EDCount, Hooked, Strategy, random::PerThreadRndg},
+    strategy::{EDCount, Hooked, Strategy, random::PerThreadRng},
     sync::atomic::Ordering,
 };
 
@@ -12,11 +14,22 @@ use crate::{
 ///
 /// Rank error and delay of this strategy are bounded with high probability.
 ///
-/// Performance, Scalability, and Semantics of Concurrent FIFO Queues, Kirsch et al.
+/// Reference: Performance, Scalability, and Semantics of Concurrent FIFO Queues, Kirsch et al.
 #[derive(Debug)]
-pub struct DRA<const CHOOSE: usize = 2, R = SmallRng>(PerThreadRndg<R>);
+pub struct DRA<const CHOOSE: usize = 2, R = SmallRng>(PhantomData<R>);
 
-impl<R: SeedableRng, const CHOOSE: usize> Default for DRA<CHOOSE, R> {
+impl<R, const CHOOSE: usize> Default for DRA<CHOOSE, R> {
+    #[inline]
+    fn default() -> Self {
+        Self(Default::default())
+    }
+}
+
+#[expect(unnameable_types)]
+#[derive(Debug)]
+pub struct DRAGambler<const CHOOSE: usize = 2, R = SmallRng>(PerThreadRng<R>);
+
+impl<R: SeedableRng, const CHOOSE: usize> Default for DRAGambler<CHOOSE, R> {
     #[inline]
     fn default() -> Self {
         Self(Default::default())
@@ -24,7 +37,7 @@ impl<R: SeedableRng, const CHOOSE: usize> Default for DRA<CHOOSE, R> {
 }
 
 impl<R: RngExt + SeedableRng, Q: Collection, const CHOOSE: usize> Strategy<Q> for DRA<CHOOSE, R> {
-    type Gambler = DRA<CHOOSE, R>;
+    type Gambler = DRAGambler<CHOOSE, R>;
 
     #[inline]
     fn choose_offer_arm(
@@ -62,7 +75,7 @@ impl<R: RngExt + SeedableRng, Q: Collection, const CHOOSE: usize> Strategy<Q> fo
 
     #[inline]
     fn fork_gambler(&self, gambler: &Self::Gambler) -> Self::Gambler {
-        Self(gambler.0.fork_thread())
+        DRAGambler(gambler.0.fork_thread())
     }
 
     #[inline]
@@ -73,10 +86,10 @@ impl<R: RngExt + SeedableRng, Q: Collection, const CHOOSE: usize> Strategy<Q> fo
                 "The number of arms to be chosen over should be > 0"
             );
         }
-        Self::default()
+        Default::default()
     }
 }
 
-impl<R, const CHOOSE: usize> Hooked for DRA<CHOOSE, R> {
+impl<R, const CHOOSE: usize> Hooked for DRAGambler<CHOOSE, R> {
     type Stake = CachePadded<EDCount>;
 }

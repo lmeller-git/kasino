@@ -143,42 +143,42 @@ pub mod policy {
 
     /// A policy that dictates that the global state needs to be rechecked if a concurrent call to [`crate::Collection::offer`] happens.
     #[derive(Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Clone, Copy)]
-    pub struct OfferOnly;
+    pub struct OfferInvalidate;
     /// A policy that dictates that the global state needs to be rechecked if a concurrent call to [`crate::Collection::poll`] happens.
     #[derive(Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Clone, Copy)]
-    pub struct PollOnly;
+    pub struct Pollinvalidate;
     /// A policy that dictates that the global state needs to be rechecked if a concurrent call to [`crate::Collection::offer`] or [`crate::Collection::poll`] happens.
     #[derive(Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Clone, Copy)]
-    pub struct OfferAndPoll;
+    pub struct OfferAndPollInvalidate;
 
     pub(crate) trait InvalidationPolicy {
         const INVALIDATE_ON_POLL: bool;
         const INVALIDATE_ON_OFFER: bool;
     }
 
-    impl InvalidationPolicy for OfferOnly {
+    impl InvalidationPolicy for OfferInvalidate {
         const INVALIDATE_ON_OFFER: bool = true;
         const INVALIDATE_ON_POLL: bool = false;
     }
 
-    impl InvalidationPolicy for OfferAndPoll {
+    impl InvalidationPolicy for OfferAndPollInvalidate {
         const INVALIDATE_ON_OFFER: bool = true;
         const INVALIDATE_ON_POLL: bool = true;
     }
 
-    impl InvalidationPolicy for PollOnly {
+    impl InvalidationPolicy for Pollinvalidate {
         const INVALIDATE_ON_OFFER: bool = false;
         const INVALIDATE_ON_POLL: bool = true;
     }
 }
 
-use policy::{InvalidationPolicy, OfferOnly};
+use policy::{InvalidationPolicy, OfferInvalidate};
 
 /// Runs a double collect on a failed poll.
 ///
 /// This strategy promises empty-linearizability, given the same holds for the raw [`Collection`].
 #[derive(Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Clone, Copy)]
-pub struct DoubleCollect<S, P = OfferOnly>(S, PhantomData<P>);
+pub struct DoubleCollect<S, P = OfferInvalidate>(S, PhantomData<P>);
 
 impl<S, P> DoubleCollect<S, P> {
     /// Constructs a new `DoubleCollect`.

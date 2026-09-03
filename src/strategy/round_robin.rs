@@ -1,19 +1,20 @@
 use crate::{
     Collection,
     storage::StorageBackend,
-    strategy::{Hooked, InstrumentedState, NoPad, Strategy},
+    strategy::{Hooked, InstrumentedState, NoPad, Strategy, random::SplitMix64},
 };
 
 /// A round robin scheduler.
 ///
 /// This scheduler does not promise a bound on rank error and delay.
-#[derive(Default, PartialEq, Eq, PartialOrd, Ord, Debug, Clone, Copy, Hash)]
+#[derive(Default, Debug)]
 pub struct RoundRobin;
 
 #[expect(unnameable_types)]
-#[derive(Default, PartialEq, Eq, PartialOrd, Ord, Debug, Clone, Copy, Hash)]
+#[derive(Default, Debug)]
 pub struct RoundRobinGambler {
     cur: usize,
+    fork_state: SplitMix64,
 }
 
 impl RoundRobinGambler {
@@ -48,9 +49,11 @@ impl<Q: Collection> Strategy<Q> for RoundRobin {
     #[inline]
     fn fork_gambler(&self, gambler: &Self::Gambler) -> Self::Gambler {
         // TODO this should be better distributed
-        let mut next = *gambler;
-        next.cur += 1;
-        next
+        let next_cur = gambler.fork_state.next_u64();
+        RoundRobinGambler {
+            cur: next_cur as usize,
+            fork_state: next_cur.into(),
+        }
     }
 
     #[inline]

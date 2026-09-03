@@ -16,7 +16,7 @@ use crate::{
     },
 };
 
-pub(crate) fn linearizable<Q>(mut q: Q)
+pub(crate) fn linearizable<Q>(q: Q)
 where
     Q: MutAccessForkCollection<Item = u32> + Sync + Send + 'static,
 {
@@ -42,7 +42,7 @@ where
     }
 }
 
-pub(crate) fn spsc<Q>(mut q: Q)
+pub(crate) fn spsc<Q>(q: Q)
 where
     Q: MutAccessForkCollection<Item = u32> + Sync + Send + 'static,
 {
@@ -71,7 +71,7 @@ where
     assert_exact_set(&popped.lock(), 0..COUNT as u32);
 }
 
-pub(crate) fn mpsc<Q>(mut q: Q)
+pub(crate) fn mpsc<Q>(q: Q)
 where
     Q: MutAccessForkCollection<Item = u32> + Sync + Send + 'static,
 {
