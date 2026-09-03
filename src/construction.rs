@@ -114,10 +114,10 @@ where
 {
     /// Fork this handle into a new one
     #[inline]
-    pub fn fork(&mut self) -> Self {
+    pub fn fork(&self) -> Self {
         Self {
             parent: self.parent,
-            gambler: S::fork_gambler(&self.parent.strategy, &mut self.gambler),
+            gambler: S::fork_gambler(&self.parent.strategy, &self.gambler),
         }
     }
 

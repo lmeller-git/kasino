@@ -15,7 +15,7 @@ use crate::{
 
 pub(crate) trait MutAccessForkCollection {
     type Item;
-    fn fork(&mut self) -> Self;
+    fn fork(&self) -> Self;
     fn enqueue(&mut self, item: Self::Item) -> Result<(), Self::Item>;
     fn dequeue(&mut self) -> Option<Self::Item>;
     fn len(&self) -> usize;
@@ -58,7 +58,7 @@ where
 {
     type Item = T;
 
-    fn fork(&mut self) -> Self {
+    fn fork(&self) -> Self {
         self.fork()
     }
 
