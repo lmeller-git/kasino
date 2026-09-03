@@ -113,7 +113,8 @@ impl<R> DerefMut for PerThreadRng<R> {
 impl<R: SeedableRng + rand::Rng> PerThreadRng<R> {
     pub(crate) fn fork_thread(&self) -> Self {
         let my_seed = self.current_seed.next_word();
-        let my_rng = R::seed_from_u64(my_seed);
+        #[allow(clippy::useless_conversion)]
+        let my_rng = R::seed_from_u64(my_seed.into());
 
         Self {
             rng: my_rng,
