@@ -146,7 +146,7 @@ pub mod policy {
     pub struct OfferInvalidate;
     /// A policy that dictates that the global state needs to be rechecked if a concurrent call to [`crate::Collection::poll`] happens.
     #[derive(Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Clone, Copy)]
-    pub struct Pollinvalidate;
+    pub struct PollInvalidate;
     /// A policy that dictates that the global state needs to be rechecked if a concurrent call to [`crate::Collection::offer`] or [`crate::Collection::poll`] happens.
     #[derive(Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Clone, Copy)]
     pub struct OfferAndPollInvalidate;
@@ -166,7 +166,7 @@ pub mod policy {
         const INVALIDATE_ON_POLL: bool = true;
     }
 
-    impl InvalidationPolicy for Pollinvalidate {
+    impl InvalidationPolicy for PollInvalidate {
         const INVALIDATE_ON_OFFER: bool = false;
         const INVALIDATE_ON_POLL: bool = true;
     }
@@ -189,39 +189,59 @@ impl<S, P> DoubleCollect<S, P> {
 }
 
 #[expect(unnameable_types)]
-pub struct DoubleCollectGambler<A> {
+pub struct DoubleCollectGambler<A, P> {
     gambler: A,
+    _policy: PhantomData<P>,
 }
 
 #[expect(unnameable_types)]
-#[derive(Default, Debug)]
-pub struct DoubleCollectState<S> {
+#[derive(Debug)]
+pub struct DoubleCollectState<S, P> {
     strategy: S,
     epoch: AtomicUsize,
+    _policy: PhantomData<P>,
 }
 
-impl<'a, S> View<'a, S> for DoubleCollectState<S> {
+impl<S: Default, P> Default for DoubleCollectState<S, P> {
+    fn default() -> Self {
+        Self {
+            strategy: Default::default(),
+            epoch: Default::default(),
+            _policy: PhantomData,
+        }
+    }
+}
+
+impl<'a, S, P> View<'a, S> for DoubleCollectState<S, P> {
     fn project(&'a self) -> &'a S {
         &self.strategy
     }
 }
 
-impl<A: Hooked> Hooked for DoubleCollectGambler<A> {
-    type Stake = CachePadded<DoubleCollectState<A::Stake>>;
+impl<A: Hooked, P: InvalidationPolicy> Hooked for DoubleCollectGambler<A, P> {
+    type Stake = CachePadded<DoubleCollectState<A::Stake, P>>;
 }
 
-impl<T: Hook> Hook for DoubleCollectState<T> {
+impl<T: Hook, P: InvalidationPolicy> Hook for DoubleCollectState<T, P> {
     fn on_offer_succ(&self) {
+        if P::INVALIDATE_ON_OFFER {
+            self.epoch.fetch_add(1, Ordering::Release);
+        }
+
         self.strategy.on_offer_succ();
     }
 
     fn on_poll_succ(&self) {
+        if P::INVALIDATE_ON_POLL {
+            self.epoch.fetch_add(1, Ordering::Release);
+        }
+
         self.strategy.on_poll_succ();
     }
 }
 
 impl<S: Strategy<Q>, Q: Collection, P: InvalidationPolicy> Strategy<Q> for DoubleCollect<S, P> {
-    type Gambler = DoubleCollectGambler<S::Gambler>;
+    type Gambler = DoubleCollectGambler<S::Gambler, P>;
 
     #[inline]
     fn choose_offer_arm(
@@ -232,9 +252,6 @@ impl<S: Strategy<Q>, Q: Collection, P: InvalidationPolicy> Strategy<Q> for Doubl
         let idx = self
             .0
             .choose_offer_arm(&StorageView::new(state), &mut gambler.gambler);
-        if P::INVALIDATE_ON_OFFER {
-            state[idx].epoch.fetch_add(1, Ordering::Release);
-        }
         idx
     }
 
@@ -247,9 +264,6 @@ impl<S: Strategy<Q>, Q: Collection, P: InvalidationPolicy> Strategy<Q> for Doubl
         let idx = self
             .0
             .choose_poll_arm(&StorageView::new(state), &mut gambler.gambler);
-        if P::INVALIDATE_ON_POLL {
-            state[idx].epoch.fetch_add(1, Ordering::Release);
-        }
         idx
     }
 
@@ -257,6 +271,7 @@ impl<S: Strategy<Q>, Q: Collection, P: InvalidationPolicy> Strategy<Q> for Doubl
     fn fork_gambler(&self, gambler: &Self::Gambler) -> Self::Gambler {
         DoubleCollectGambler {
             gambler: self.0.fork_gambler(&gambler.gambler),
+            _policy: PhantomData,
         }
     }
 
@@ -264,6 +279,7 @@ impl<S: Strategy<Q>, Q: Collection, P: InvalidationPolicy> Strategy<Q> for Doubl
     fn create_gambler(&self) -> Self::Gambler {
         DoubleCollectGambler {
             gambler: self.0.create_gambler(),
+            _policy: PhantomData,
         }
     }
 
