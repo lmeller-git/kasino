@@ -44,7 +44,7 @@ pub trait Strategy<Q: Collection> {
 
     /// forks a gambler into a new one
     #[must_use]
-    fn fork_gambler(&self, parent: &mut Self::Gambler) -> Self::Gambler;
+    fn fork_gambler(&self, parent: &Self::Gambler) -> Self::Gambler;
     /// creates a new owned gambler with default values
     #[must_use]
     fn create_gambler(&self) -> Self::Gambler;

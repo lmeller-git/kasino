@@ -164,7 +164,7 @@ macro_rules! bench_kasino_mpsc {
                     for _ in 0..iters {
                         let bandit: InlineBandit<QAdapter<u64, MT_SUB_CAP>, $Sched, SUB_QUEUE_COUNT, MT_SUB_CAP> =
                             InlineBandit::new();
-                        let mut root = bandit.buy_in();
+                        let  root = bandit.buy_in();
                         let start = Instant::now();
                         std::thread::scope(|scope| {
                             for _ in 0..$n {
@@ -205,7 +205,7 @@ macro_rules! bench_kasino_mpmc {
                     for _ in 0..iters {
                         let bandit: InlineBandit<QAdapter<u64, MT_SUB_CAP>, $Sched, SUB_QUEUE_COUNT, MT_SUB_CAP> =
                             InlineBandit::new();
-                            let mut root = bandit.buy_in();
+                            let  root = bandit.buy_in();
                         let pollped_total = AtomicUsize::new(0);
                         let start = Instant::now();
                         std::thread::scope(|scope| {

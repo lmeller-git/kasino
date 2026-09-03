@@ -40,7 +40,7 @@ impl<Q: Collection, S: Strategy<Q>> Strategy<Q> for NoCollect<S> {
     }
 
     #[inline]
-    fn fork_gambler(&self, gambler: &mut Self::Gambler) -> Self::Gambler {
+    fn fork_gambler(&self, gambler: &Self::Gambler) -> Self::Gambler {
         self.0.fork_gambler(gambler)
     }
 
@@ -254,9 +254,9 @@ impl<S: Strategy<Q>, Q: Collection, P: InvalidationPolicy> Strategy<Q> for Doubl
     }
 
     #[inline]
-    fn fork_gambler(&self, gambler: &mut Self::Gambler) -> Self::Gambler {
+    fn fork_gambler(&self, gambler: &Self::Gambler) -> Self::Gambler {
         DoubleCollectGambler {
-            gambler: self.0.fork_gambler(&mut gambler.gambler),
+            gambler: self.0.fork_gambler(&gambler.gambler),
         }
     }
 

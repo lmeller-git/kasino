@@ -1,12 +1,10 @@
-use core::marker::PhantomData;
-
 use crossbeam_utils::CachePadded;
 use rand::{RngExt, SeedableRng, rngs::SmallRng};
 
 use crate::{
     Collection,
     storage::StorageBackend,
-    strategy::{EDCount, Hooked, Strategy},
+    strategy::{EDCount, Hooked, Strategy, random::PerThreadRndg},
     sync::atomic::Ordering,
 };
 
@@ -15,24 +13,18 @@ use crate::{
 /// Rank error and delay of this strategy are bounded with high probability.
 ///
 /// Performance, Scalability, and Semantics of Concurrent FIFO Queues, Kirsch et al.
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Clone, Copy)]
-pub struct DRA<const CHOOSE: usize = 2, R = SmallRng>(PhantomData<R>);
+#[derive(Debug)]
+pub struct DRA<const CHOOSE: usize = 2, R = SmallRng>(PerThreadRndg<R>);
 
-impl<R, const CHOOSE: usize> Default for DRA<CHOOSE, R> {
+impl<R: SeedableRng, const CHOOSE: usize> Default for DRA<CHOOSE, R> {
     #[inline]
     fn default() -> Self {
-        Self(PhantomData)
+        Self(Default::default())
     }
 }
 
-#[expect(unnameable_types)]
-#[derive(Default, PartialEq, Eq, PartialOrd, Ord, Debug, Clone, Copy, Hash)]
-pub struct DRAGambler<R = SmallRng> {
-    rng: R,
-}
-
 impl<R: RngExt + SeedableRng, Q: Collection, const CHOOSE: usize> Strategy<Q> for DRA<CHOOSE, R> {
-    type Gambler = DRAGambler<R>;
+    type Gambler = DRA<CHOOSE, R>;
 
     #[inline]
     fn choose_offer_arm(
@@ -41,7 +33,7 @@ impl<R: RngExt + SeedableRng, Q: Collection, const CHOOSE: usize> Strategy<Q> fo
         gambler: &mut Self::Gambler,
     ) -> usize {
         (0..CHOOSE)
-            .map(|_| gambler.rng.random_range(..state.len()))
+            .map(|_| gambler.0.random_range(..state.len()))
             .min_by_key(|&i| {
                 state[i]
                     .offer_count
@@ -58,7 +50,7 @@ impl<R: RngExt + SeedableRng, Q: Collection, const CHOOSE: usize> Strategy<Q> fo
         gambler: &mut Self::Gambler,
     ) -> usize {
         (0..CHOOSE)
-            .map(|_| gambler.rng.random_range(..state.len()))
+            .map(|_| gambler.0.random_range(..state.len()))
             .max_by_key(|&i| {
                 state[i]
                     .poll_count
@@ -69,10 +61,8 @@ impl<R: RngExt + SeedableRng, Q: Collection, const CHOOSE: usize> Strategy<Q> fo
     }
 
     #[inline]
-    fn fork_gambler(&self, gambler: &mut Self::Gambler) -> Self::Gambler {
-        DRAGambler {
-            rng: gambler.rng.fork(),
-        }
+    fn fork_gambler(&self, gambler: &Self::Gambler) -> Self::Gambler {
+        Self(gambler.0.fork_thread())
     }
 
     #[inline]
@@ -83,12 +73,10 @@ impl<R: RngExt + SeedableRng, Q: Collection, const CHOOSE: usize> Strategy<Q> fo
                 "The number of arms to be chosen over should be > 0"
             );
         }
-        DRAGambler {
-            rng: R::seed_from_u64(Default::default()),
-        }
+        Self::default()
     }
 }
 
-impl<R> Hooked for DRAGambler<R> {
+impl<R, const CHOOSE: usize> Hooked for DRA<CHOOSE, R> {
     type Stake = CachePadded<EDCount>;
 }

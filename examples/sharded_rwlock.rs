@@ -193,7 +193,7 @@ impl<T, S: Strategy<ReaderShard<T>>> Strategy<ReaderShard<T>> for RwLockStrategy
         self.0.choose_poll_arm(state, arm)
     }
 
-    fn fork_gambler(&self, arm: &mut Self::Gambler) -> Self::Gambler {
+    fn fork_gambler(&self, arm: &Self::Gambler) -> Self::Gambler {
         self.0.fork_gambler(arm)
     }
 

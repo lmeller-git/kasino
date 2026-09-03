@@ -46,8 +46,11 @@ impl<Q: Collection> Strategy<Q> for RoundRobin {
     }
 
     #[inline]
-    fn fork_gambler(&self, gambler: &mut Self::Gambler) -> Self::Gambler {
-        *gambler
+    fn fork_gambler(&self, gambler: &Self::Gambler) -> Self::Gambler {
+        // TODO this should be better distributed
+        let mut next = *gambler;
+        next.cur += 1;
+        next
     }
 
     #[inline]
