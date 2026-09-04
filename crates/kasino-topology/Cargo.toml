@@ -12,6 +12,9 @@ keywords = []
 categories = ["algorithms", "concurrency"]
 rust-version.workspace = true
 
+# TODO update this to ture once ready
+publish = false
+
 [dependencies]
 kasino = { workspace = true }
 
