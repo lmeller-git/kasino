@@ -17,6 +17,16 @@ impl<T> Signature for TryPushSignature<T> {
         = ()
     where
         Self: 'arm;
+
+    #[inline]
+    fn reclaim_input<'input, 'arm>(
+        error: Self::Error<'input, 'arm>,
+    ) -> Result<Self::Input<'input>, Self::Error<'input, 'arm>>
+    where
+        T: 'arm,
+    {
+        Ok(error)
+    }
 }
 
 /// A method that returns a `T` on success.

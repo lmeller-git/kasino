@@ -8,7 +8,7 @@ mod round_robin;
 
 use core::ops::{Deref, DerefMut};
 
-pub use collect::{DoubleCollectPoll, NoCollectPoll, policy};
+pub use collect::{DoubleCollectPoll, LinearCollectOffer, NoCollectPoll, policy};
 pub(crate) use collect::{StorageView, View};
 pub use dcbo::DCBO;
 pub use dra::DRA;

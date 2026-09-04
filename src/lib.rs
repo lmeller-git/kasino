@@ -172,6 +172,14 @@ pub trait Signature {
     type Error<'input, 'arm>
     where
         Self: 'arm;
+
+    /// If the error from [`Collection::offer`] contains the input, then it can be reused in subsequent calls to [`Collection::offer`].
+    #[inline]
+    fn reclaim_input<'input, 'arm>(
+        error: Self::Error<'input, 'arm>,
+    ) -> Result<Self::Input<'input>, Self::Error<'input, 'arm>> {
+        Err(error)
+    }
 }
 
 /// The interface for a generic data structure.

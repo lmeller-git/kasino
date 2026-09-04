@@ -20,6 +20,84 @@ use crate::{
     sync::atomic::{AtomicUsize, Ordering},
 };
 
+/// Does one linear scan over all sub collections
+#[derive(Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Clone, Copy)]
+pub struct LinearCollectOffer<S>(S);
+
+impl<Q: Collection, S: Strategy<Q>> Strategy<Q> for LinearCollectOffer<S> {
+    type Gambler = S::Gambler;
+
+    #[inline]
+    fn choose_offer_arm(
+        &self,
+        state: &impl StorageBackend<<Self::Gambler as Hooked>::Stake>,
+        gambler: &mut Self::Gambler,
+    ) -> usize {
+        self.0.choose_offer_arm(state, gambler)
+    }
+
+    #[inline]
+    fn choose_poll_arm(
+        &self,
+        state: &impl StorageBackend<<Self::Gambler as Hooked>::Stake>,
+        gambler: &mut Self::Gambler,
+    ) -> usize {
+        self.0.choose_poll_arm(state, gambler)
+    }
+
+    #[inline]
+    fn fork_gambler(&self, parent: &Self::Gambler) -> Self::Gambler {
+        self.0.fork_gambler(parent)
+    }
+
+    #[inline]
+    fn create_gambler(&self) -> Self::Gambler {
+        self.0.create_gambler()
+    }
+
+    #[inline]
+    fn on_poll_fail<'b, 'c>(
+        &self,
+        state: &impl StorageBackend<<Self::Gambler as Hooked>::Stake>,
+        bandit_arms: &'c impl StorageBackend<Q>,
+        input: <<Q as Collection>::PollSignature as Signature>::Input<'b>,
+    ) -> Option<(
+        <<Q as Collection>::PollSignature as Signature>::Output<'b, 'c>,
+        usize,
+    )>
+    where
+        Q: 'c,
+    {
+        self.0.on_poll_fail(state, bandit_arms, input)
+    }
+
+    #[inline]
+    fn on_offer_fail<'b, 'c>(
+        &self,
+        _state: &impl StorageBackend<<Self::Gambler as Hooked>::Stake>,
+        bandit_arms: &'c impl StorageBackend<Q>,
+        mut input: <<Q as Collection>::OfferSignature as Signature>::Error<'b, 'c>,
+    ) -> Result<
+        (
+            <<Q as Collection>::OfferSignature as Signature>::Output<'b, 'c>,
+            usize,
+        ),
+        <<Q as Collection>::OfferSignature as Signature>::Error<'b, 'c>,
+    >
+    where
+        Q: 'c,
+    {
+        for (i, arm) in bandit_arms.iter().enumerate() {
+            match arm.offer(<<Q as Collection>::OfferSignature as Signature>::reclaim_input(input)?)
+            {
+                Ok(res) => return Ok((res, i)),
+                Err(e) => input = e,
+            }
+        }
+        Err(input)
+    }
+}
+
 /// Does not collect any remaining items
 #[derive(Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Clone, Copy)]
 pub struct NoCollectPoll<S>(S);
