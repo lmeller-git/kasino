@@ -97,9 +97,8 @@ pub type BoxedBandit<Q: Collection, S: Strategy<Q>, const SUB_CAP: usize = DEFAU
 
 impl<Q, S, const SUB_CAP: usize> BoxedBandit<Q, S, SUB_CAP>
 where
-    Q: WithCapacity<SUB_CAP>,
+    Q: WithCapacity<SUB_CAP> + Collection,
     S: Strategy<Q> + Default,
-    Q: Collection,
     StrategyStakes<S, Q>: Default,
 {
     /// constructs a new `BoxedLop`

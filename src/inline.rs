@@ -126,9 +126,8 @@ where
 
 impl<Q, S, const N: usize, const SUB_CAP: usize> Default for InlineBandit<Q, S, N, SUB_CAP>
 where
-    Q: WithCapacity<SUB_CAP>,
+    Q: WithCapacity<SUB_CAP> + Collection,
     S: Strategy<Q> + Default,
-    Q: Collection,
     StrategyStakes<S, Q>: Default,
 {
     #[inline]

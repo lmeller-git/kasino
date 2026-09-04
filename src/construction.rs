@@ -5,7 +5,7 @@ use crate::{
     Signature,
     components::PushPopCollection,
     storage::StorageBackend,
-    strategy::{Hooked, StorageView, Strategy, StrategyStakes, View, padded::PaddingRequest},
+    strategy::{Hooked, StorageView, Strategy, StrategyStakes, View},
 };
 
 pub(crate) const DEFAULT_QUEUE_CAP: usize = 32;
@@ -17,11 +17,7 @@ pub struct Bandit<Q, S, B, C, const SUB_CAP: usize = DEFAULT_QUEUE_CAP>
 where
     Q: Collection,
     S: Strategy<Q>,
-    C: StorageBackend<
-        <<S::Gambler as Hooked>::RequestedPadding as PaddingRequest>::PaddingStrategy<
-            <S::Gambler as Hooked>::Stake,
-        >,
-    >,
+    C: StorageBackend<StrategyStakes<S, Q>>,
 {
     strategy: S,
     sub_collections: B,
@@ -31,14 +27,9 @@ where
 
 impl<Q, S, B, C, const SUB_CAP: usize> Bandit<Q, S, B, C, SUB_CAP>
 where
-    S: Default,
     Q: Collection,
-    S: Strategy<Q>,
-    C: StorageBackend<
-        <<S::Gambler as Hooked>::RequestedPadding as PaddingRequest>::PaddingStrategy<
-            <S::Gambler as Hooked>::Stake,
-        >,
-    >,
+    S: Strategy<Q> + Default,
+    C: StorageBackend<StrategyStakes<S, Q>>,
 {
     pub(crate) fn new_with(queues: B, states: C) -> Self {
         Self {
@@ -55,11 +46,7 @@ where
     B: StorageBackend<Q>,
     Q: Collection,
     S: Strategy<Q>,
-    C: StorageBackend<
-        <<S::Gambler as Hooked>::RequestedPadding as PaddingRequest>::PaddingStrategy<
-            <S::Gambler as Hooked>::Stake,
-        >,
-    >,
+    C: StorageBackend<StrategyStakes<S, Q>>,
 {
     /// returns the number of sub collections
     #[inline]
@@ -70,15 +57,9 @@ where
 
 impl<Q, S, B, C, const SUB_CAP: usize> Bandit<Q, S, B, C, SUB_CAP>
 where
-    S: Strategy<Q>,
-    Q: Collection,
     Q: Collection,
     S: Strategy<Q>,
-    C: StorageBackend<
-        <<S::Gambler as Hooked>::RequestedPadding as PaddingRequest>::PaddingStrategy<
-            <S::Gambler as Hooked>::Stake,
-        >,
-    >,
+    C: StorageBackend<StrategyStakes<S, Q>>,
 {
     /// constructs a new handle to this container
     ///
@@ -98,11 +79,7 @@ where
     B: StorageBackend<Q>,
     Q: Collection,
     S: Strategy<Q>,
-    C: StorageBackend<
-        <<S::Gambler as Hooked>::RequestedPadding as PaddingRequest>::PaddingStrategy<
-            <S::Gambler as Hooked>::Stake,
-        >,
-    >,
+    C: StorageBackend<StrategyStakes<S, Q>>,
 {
     /// Consumes this collection and returns an iterator over its arms.
     #[inline]
@@ -117,11 +94,7 @@ where
     B: IntoIterator<Item = Q>,
     Q: Collection,
     S: Strategy<Q>,
-    C: StorageBackend<
-        <<S::Gambler as Hooked>::RequestedPadding as PaddingRequest>::PaddingStrategy<
-            <S::Gambler as Hooked>::Stake,
-        >,
-    >,
+    C: StorageBackend<StrategyStakes<S, Q>>,
 {
     /// Consumes this collection and returns an iterator over all contained items.
     #[inline]
@@ -152,11 +125,7 @@ where
     B: StorageBackend<Q>,
     Q: Collection,
     S: Strategy<Q>,
-    C: StorageBackend<
-        <<S::Gambler as Hooked>::RequestedPadding as PaddingRequest>::PaddingStrategy<
-            <S::Gambler as Hooked>::Stake,
-        >,
-    >,
+    C: StorageBackend<StrategyStakes<S, Q>>,
 {
     /// Fork this handle into a new one
     #[inline]
