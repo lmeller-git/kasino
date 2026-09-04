@@ -11,16 +11,6 @@ categories.workspace = true
 readme.workspace = true
 description.workspace = true
 
-include = [
-    "/src",
-    "/benches",
-    "Cargo.toml",
-    "/LICENSE*",
-    "/README.md",
-    "/CHANGELOG.md",
-    "/examples"
-]
-
 [package.metadata.docs.rs]
 all-features = true
 
