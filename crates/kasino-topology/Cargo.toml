@@ -3,13 +3,13 @@ name = "kasino-topology"
 version = "0.1.0"
 edition.workspace = true
 authors.workspace = true
-description.workspace = true
-documentation.workspace = true
+description = "Hardware aware schedulers for https://crates.io/crates/kasino"
+documentation = "https://docs.rs/kasino-toplogy"
 readme = "README.md"
 license.workspace = true
 repository.workspace = true
-keywords.workspace = true
-categories.workspace = true
+keywords = []
+categories = ["algorithms", "concurrency"]
 rust-version.workspace = true
 
 [dependencies]
