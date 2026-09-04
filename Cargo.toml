@@ -1,33 +1,8 @@
-[package]
-name = "kasino"
-version = "0.3.0"
-authors.workspace = true
-edition.workspace = true
-license.workspace = true
-repository.workspace = true
-documentation.workspace = true
-keywords.workspace = true
-categories.workspace = true
-readme.workspace = true
-description.workspace = true
-
-include = [
-    "/src",
-    "/benches",
-    "Cargo.toml",
-    "/LICENSE*",
-    "/README.md",
-    "/CHANGELOG.md",
-    "/examples"
-]
-
-[package.metadata.docs.rs]
-all-features = true
-
 [workspace]
+resolver = "3"
 members = [
-  ".",
-  "profiling",
+  "crates/kasino",
+  "crates/profiling",
 ]
 
 [workspace.package]
@@ -42,38 +17,12 @@ keywords = ["mpmc", "no_std", "atomic", "lock-free"]
 categories = ["data-structures", "algorithms", "concurrency", "no-std::no-alloc"]
 rust-version = "1.85.0"
 
-[features]
-default = []
-std = ["alloc"]
-alloc = []
-instrumented = []
-atomic-fallback = ["portable-atomic/fallback"]
-
-[dependencies]
+[workspace.dependencies]
+kasino = { path = "crates/kasino", version = "0.3.0" }
 crossbeam-utils = { version = "0.8.21", default-features = false }
-portable-atomic = { version = "1.13.1", default-features = false, features = ["require-cas"] }
-rand = { version = "0.10.2", default-features = false }
-
-[dev-dependencies]
-criterion = { version = "0.8", features = ["html_reports"] }
-spin = { version = "0.12.0", features = ["lock_api", "rwlock"] }
-crossbeam-queue = "0.3.12"
-
-[target.'cfg(loom)'.dependencies]
-loom = { version = "0.7", features = ["checkpoint"] }
-
-[target.'cfg(shuttle)'.dependencies]
-shuttle = "0.9"
-
-[lints]
-workspace = true
-
-[[bench]]
-name = "main_benchmarks"
-harness = false
 
 [workspace.lints.rust]
-unknown-lints = "allow"
+unknown_lints = "allow"
 unexpected_cfgs = { level = "allow", check-cfg = ['cfg(loom)', 'cfg(shuttle)'] }
 rust_2018_idioms = { level = "warn", priority = -1 }
 unnameable_types = "warn"
@@ -141,4 +90,4 @@ trait_duplication_in_bounds = "warn"
 verbose_file_reads = "warn"
 zero_sized_map_values = "warn"
 
-disallowed-modules = "warn"
+disallowed_modules = "warn"
