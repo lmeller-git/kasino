@@ -6,7 +6,7 @@ use crate::{
     WithCapacity,
     construction::{Bandit, BanditHandle, DEFAULT_QUEUE_CAP},
     storage::StorageBackend,
-    strategy::{Hooked, Strategy},
+    strategy::{Strategy, StrategyStakes},
 };
 
 /// a dynamically stored slice
@@ -88,18 +88,19 @@ pub type BoxedBanditHandle<
     Q: Collection,
     S: Strategy<Q>,
     const SUB_CAP: usize = DEFAULT_QUEUE_CAP,
-> = BanditHandle<'a, Q, S, BoxedStorage<Q>, BoxedStorage<<S::Gambler as Hooked>::Stake>, SUB_CAP>;
+> = BanditHandle<'a, Q, S, BoxedStorage<Q>, BoxedStorage<StrategyStakes<S, Q>>, SUB_CAP>;
 
 /// a subcollection container, which is stored dynamically
 #[expect(type_alias_bounds)]
 pub type BoxedBandit<Q: Collection, S: Strategy<Q>, const SUB_CAP: usize = DEFAULT_QUEUE_CAP> =
-    Bandit<Q, S, BoxedStorage<Q>, BoxedStorage<<S::Gambler as Hooked>::Stake>, SUB_CAP>;
+    Bandit<Q, S, BoxedStorage<Q>, BoxedStorage<StrategyStakes<S, Q>>, SUB_CAP>;
 
 impl<Q, S, const SUB_CAP: usize> BoxedBandit<Q, S, SUB_CAP>
 where
     Q: WithCapacity<SUB_CAP>,
     S: Strategy<Q> + Default,
     Q: Collection,
+    StrategyStakes<S, Q>: Default,
 {
     /// constructs a new `BoxedLop`
     #[must_use]

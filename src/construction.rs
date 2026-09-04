@@ -5,7 +5,7 @@ use crate::{
     Signature,
     components::PushPopCollection,
     storage::StorageBackend,
-    strategy::{Hooked, Strategy},
+    strategy::{Hooked, StorageView, Strategy, StrategyStakes, View, padded::PaddingRequest},
 };
 
 pub(crate) const DEFAULT_QUEUE_CAP: usize = 32;
@@ -13,7 +13,16 @@ pub(crate) const DEFAULT_QUEUE_CAP: usize = 32;
 /// A [`Bandit`] distributes accesses to the wrapped datastructure across N sub-collections.
 /// Access is distribute according to the [`Strategy`] `S` over the sub-collections `B` using state `C`.
 #[derive(PartialEq, Eq, PartialOrd, Ord, Debug, Clone, Hash)]
-pub struct Bandit<Q, S, B, C, const SUB_CAP: usize = DEFAULT_QUEUE_CAP> {
+pub struct Bandit<Q, S, B, C, const SUB_CAP: usize = DEFAULT_QUEUE_CAP>
+where
+    Q: Collection,
+    S: Strategy<Q>,
+    C: StorageBackend<
+        <<S::Gambler as Hooked>::RequestedPadding as PaddingRequest>::PaddingStrategy<
+            <S::Gambler as Hooked>::Stake,
+        >,
+    >,
+{
     strategy: S,
     sub_collections: B,
     collection_state: C,
@@ -23,6 +32,13 @@ pub struct Bandit<Q, S, B, C, const SUB_CAP: usize = DEFAULT_QUEUE_CAP> {
 impl<Q, S, B, C, const SUB_CAP: usize> Bandit<Q, S, B, C, SUB_CAP>
 where
     S: Default,
+    Q: Collection,
+    S: Strategy<Q>,
+    C: StorageBackend<
+        <<S::Gambler as Hooked>::RequestedPadding as PaddingRequest>::PaddingStrategy<
+            <S::Gambler as Hooked>::Stake,
+        >,
+    >,
 {
     pub(crate) fn new_with(queues: B, states: C) -> Self {
         Self {
@@ -37,6 +53,13 @@ where
 impl<Q, S, B, C, const SUB_CAP: usize> Bandit<Q, S, B, C, SUB_CAP>
 where
     B: StorageBackend<Q>,
+    Q: Collection,
+    S: Strategy<Q>,
+    C: StorageBackend<
+        <<S::Gambler as Hooked>::RequestedPadding as PaddingRequest>::PaddingStrategy<
+            <S::Gambler as Hooked>::Stake,
+        >,
+    >,
 {
     /// returns the number of sub collections
     #[inline]
@@ -49,6 +72,13 @@ impl<Q, S, B, C, const SUB_CAP: usize> Bandit<Q, S, B, C, SUB_CAP>
 where
     S: Strategy<Q>,
     Q: Collection,
+    Q: Collection,
+    S: Strategy<Q>,
+    C: StorageBackend<
+        <<S::Gambler as Hooked>::RequestedPadding as PaddingRequest>::PaddingStrategy<
+            <S::Gambler as Hooked>::Stake,
+        >,
+    >,
 {
     /// constructs a new handle to this container
     ///
@@ -66,6 +96,13 @@ where
 impl<Q, S, B, C, const SUB_CAP: usize> Bandit<Q, S, B, C, SUB_CAP>
 where
     B: StorageBackend<Q>,
+    Q: Collection,
+    S: Strategy<Q>,
+    C: StorageBackend<
+        <<S::Gambler as Hooked>::RequestedPadding as PaddingRequest>::PaddingStrategy<
+            <S::Gambler as Hooked>::Stake,
+        >,
+    >,
 {
     /// Consumes this collection and returns an iterator over its arms.
     #[inline]
@@ -78,6 +115,13 @@ impl<Q, S, B, C, const SUB_CAP: usize> Bandit<Q, S, B, C, SUB_CAP>
 where
     Q: IntoIterator,
     B: IntoIterator<Item = Q>,
+    Q: Collection,
+    S: Strategy<Q>,
+    C: StorageBackend<
+        <<S::Gambler as Hooked>::RequestedPadding as PaddingRequest>::PaddingStrategy<
+            <S::Gambler as Hooked>::Stake,
+        >,
+    >,
 {
     /// Consumes this collection and returns an iterator over all contained items.
     #[inline]
@@ -93,24 +137,26 @@ where
 /// This handle provides access to the functionality of the wrapped [`Collection`].
 #[must_use]
 #[derive(PartialEq, Eq, PartialOrd, Ord, Debug, Hash)]
-pub struct BanditHandle<
-    'a,
+pub struct BanditHandle<'a, Q, S, B, C, const SUB_CAP: usize = DEFAULT_QUEUE_CAP>
+where
     Q: Collection,
     S: Strategy<Q>,
-    B,
-    C,
-    const SUB_CAP: usize = DEFAULT_QUEUE_CAP,
-> {
+    C: StorageBackend<StrategyStakes<S, Q>>,
+{
     parent: &'a Bandit<Q, S, B, C, SUB_CAP>,
     gambler: S::Gambler,
 }
 
 impl<'a, Q, S, B, C, const SUB_CAP: usize> BanditHandle<'a, Q, S, B, C, SUB_CAP>
 where
+    B: StorageBackend<Q>,
     Q: Collection,
     S: Strategy<Q>,
-    B: StorageBackend<Q>,
-    C: StorageBackend<<S::Gambler as Hooked>::Stake>,
+    C: StorageBackend<
+        <<S::Gambler as Hooked>::RequestedPadding as PaddingRequest>::PaddingStrategy<
+            <S::Gambler as Hooked>::Stake,
+        >,
+    >,
 {
     /// Fork this handle into a new one
     #[inline]
@@ -153,7 +199,7 @@ where
         &'c <S::Gambler as Hooked>::Stake,
     ) {
         let (res, idx) = Self::offer_internal(self.parent, &mut self.gambler, item);
-        (res, &self.parent.collection_state[idx])
+        (res, self.parent.collection_state[idx].project())
     }
 
     /// Makes a call to [`Self::offer`] and returns the index associated with the arm we pulled.    #[inline]
@@ -171,23 +217,23 @@ where
     ) {
         let i = parent
             .strategy
-            .choose_offer_arm(&parent.collection_state, gambler);
+            .choose_offer_arm(&StorageView::new(&parent.collection_state), gambler);
         match parent.sub_collections[i].offer(item) {
             Ok(r) => {
-                gambler.on_offer_succ(&parent.collection_state[i]);
+                gambler.on_offer_succ(parent.collection_state[i].project());
                 (Ok(r), i)
             }
             Err(e) => {
-                gambler.on_offer_fail(&parent.collection_state[i]);
+                gambler.on_offer_fail(parent.collection_state[i].project());
                 let r = parent.strategy.on_offer_fail(
-                    &parent.collection_state,
+                    &StorageView::new(&parent.collection_state),
                     &parent.sub_collections,
                     e,
                 );
 
                 match r {
                     Ok((out, i)) => {
-                        gambler.on_offer_succ(&parent.collection_state[i]);
+                        gambler.on_offer_succ(parent.collection_state[i].project());
                         (Ok(out), i)
                     }
                     Err(e) => (Err(e), i),
@@ -228,7 +274,7 @@ where
         &'c <S::Gambler as Hooked>::Stake,
     ) {
         let (res, idx) = Self::poll_internal(self.parent, &mut self.gambler, input);
-        (res, &self.parent.collection_state[idx])
+        (res, self.parent.collection_state[idx].project())
     }
 
     /// Makes a call to [`Self::poll`] and returns the index associated with the arm we pulled.
@@ -246,21 +292,21 @@ where
     ) {
         let i = parent
             .strategy
-            .choose_poll_arm(&parent.collection_state, gambler);
+            .choose_poll_arm(&StorageView::new(&parent.collection_state), gambler);
         match parent.sub_collections[i].poll(input) {
             Ok(r) => {
-                gambler.on_poll_succ(&parent.collection_state[i]);
+                gambler.on_poll_succ(parent.collection_state[i].project());
                 (Ok(r), i)
             }
             Err(e) => {
-                gambler.on_poll_fail(&parent.collection_state[i]);
+                gambler.on_poll_fail(parent.collection_state[i].project());
                 let r = parent.strategy.on_poll_fail(
-                    &parent.collection_state,
+                    &StorageView::new(&parent.collection_state),
                     &parent.sub_collections,
                     input,
                 );
                 if let Some((r, state)) = r {
-                    gambler.on_poll_succ(&parent.collection_state[state]);
+                    gambler.on_poll_succ(parent.collection_state[state].project());
                     (Ok(r), state)
                 } else {
                     (Err(e), i)
@@ -271,7 +317,7 @@ where
 
     /// Returns an iterator over all stakes in all arms
     #[inline]
-    pub fn state(&self) -> impl Iterator<Item = &<S::Gambler as Hooked>::Stake> {
+    pub fn state(&self) -> impl Iterator<Item = &StrategyStakes<S, Q>> {
         self.parent.collection_state.iter()
     }
 
@@ -303,6 +349,7 @@ where
     B: StorageBackend<Q>,
     S: Strategy<Q>,
     Q: Collection,
+    C: StorageBackend<StrategyStakes<S, Q>>,
 {
     /// returns the number of arms
     #[inline]
@@ -316,7 +363,7 @@ where
     Q: PushPopCollection,
     S: Strategy<Q>,
     B: StorageBackend<Q>,
-    C: StorageBackend<<S::Gambler as Hooked>::Stake>,
+    C: StorageBackend<StrategyStakes<S, Q>>,
 {
     /// Pushes an item to the collection.
     ///

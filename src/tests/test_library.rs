@@ -9,7 +9,7 @@ use crate::{
     WithCapacity,
     components::{PopSignature, TryPushSignature},
     storage::StorageBackend,
-    strategy::{Hooked, Strategy},
+    strategy::{Hooked, Strategy, StrategyStakes},
     sync::Mutex,
 };
 
@@ -54,7 +54,7 @@ where
     Q: Collection<PollSignature = PopSignature<T>, OfferSignature = TryPushSignature<T>>,
     S: Strategy<Q>,
     B: StorageBackend<Q>,
-    C: StorageBackend<<S::Gambler as Hooked>::Stake>,
+    C: StorageBackend<StrategyStakes<S, Q>>,
 {
     type Item = T;
 

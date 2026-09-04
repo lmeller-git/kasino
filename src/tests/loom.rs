@@ -1,6 +1,6 @@
 use crate::{
     InlineBandit,
-    strategy::{DCBO, DoubleCollect},
+    strategy::{DCBO, DoubleCollectPoll},
     sync::{
         Arc,
         Mutex,
@@ -129,7 +129,7 @@ fn mpsc_impl() {
 #[test]
 fn linearizable_impl() {
     loom::model(|| {
-        let q: &'static InlineBandit<LockedDeque<u32>, DoubleCollect<DCBO>, 3, 1> =
+        let q: &'static InlineBandit<LockedDeque<u32>, DoubleCollectPoll<DCBO>, 3, 1> =
             Box::leak(Box::new(InlineBandit::new()));
         linearizable(q.buy_in());
     })

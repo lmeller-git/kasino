@@ -15,7 +15,7 @@ use kasino::{
     Signature,
     WithCapacity,
     storage::StorageBackend,
-    strategy::{DCBO, Hooked, Strategy},
+    strategy::{DCBO, Hooked, Strategy, StrategyStakes},
 };
 
 #[derive(Debug)]
@@ -254,6 +254,7 @@ struct ShardedRwLock<T, S: Strategy<ReaderShard<T>>, const N: usize> {
 impl<T, S, const N: usize> ShardedRwLock<T, S, N>
 where
     S: Strategy<ReaderShard<T>> + Default,
+    StrategyStakes<RwLockStrategy<S>, ReaderShard<T>>: Default,
 {
     fn new(item: T) -> Self {
         Self {

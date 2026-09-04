@@ -5,7 +5,7 @@ use crate::{
     WithCapacity,
     construction::{Bandit, BanditHandle, DEFAULT_QUEUE_CAP},
     storage::StorageBackend,
-    strategy::{Hooked, Strategy},
+    strategy::{Strategy, StrategyStakes},
 };
 
 /// an array
@@ -90,14 +90,7 @@ pub type InlineBanditHandle<
     S: Strategy<Q>,
     const N: usize,
     const SUB_CAP: usize = DEFAULT_QUEUE_CAP,
-> = BanditHandle<
-    'a,
-    Q,
-    S,
-    InlineStorage<Q, N>,
-    InlineStorage<<S::Gambler as Hooked>::Stake, N>,
-    SUB_CAP,
->;
+> = BanditHandle<'a, Q, S, InlineStorage<Q, N>, InlineStorage<StrategyStakes<S, Q>, N>, SUB_CAP>;
 
 /// A container of `N` sub collections that is stored inline.
 #[expect(type_alias_bounds)]
@@ -106,12 +99,13 @@ pub type InlineBandit<
     S: Strategy<Q>,
     const N: usize,
     const SUB_CAP: usize = DEFAULT_QUEUE_CAP,
-> = Bandit<Q, S, InlineStorage<Q, N>, InlineStorage<<S::Gambler as Hooked>::Stake, N>, SUB_CAP>;
+> = Bandit<Q, S, InlineStorage<Q, N>, InlineStorage<StrategyStakes<S, Q>, N>, SUB_CAP>;
 
 impl<Q: Collection, S, const N: usize, const SUB_CAP: usize> InlineBandit<Q, S, N, SUB_CAP>
 where
     Q: WithCapacity<SUB_CAP>,
     S: Strategy<Q> + Default,
+    StrategyStakes<S, Q>: Default,
 {
     /// constructs a new `InlineBandit`
     #[must_use]
@@ -135,6 +129,7 @@ where
     Q: WithCapacity<SUB_CAP>,
     S: Strategy<Q> + Default,
     Q: Collection,
+    StrategyStakes<S, Q>: Default,
 {
     #[inline]
     fn default() -> Self {

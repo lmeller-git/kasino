@@ -8,19 +8,29 @@ mod round_robin;
 
 use core::ops::{Deref, DerefMut};
 
-pub use collect::{DoubleCollect, NoCollect, policy};
-use crossbeam_utils::CachePadded;
+pub use collect::{DoubleCollectPoll, NoCollectPoll, policy};
+pub(crate) use collect::{StorageView, View};
 pub use dcbo::DCBO;
 pub use dra::DRA;
 pub use random::RandomAccess;
 pub use round_robin::RoundRobin;
+pub mod padded;
 
 use crate::{
     Collection,
     Signature,
     storage::StorageBackend,
+    strategy::padded::{PaddingRequest, truthiness::Truthiness},
     sync::atomic::{AtomicUsize, Ordering},
 };
+
+/// The fully type reolved and potentially cachepadded stake of this hook.
+#[expect(type_alias_bounds)]
+pub type ResolvedStake<H: Hooked> =
+    <<H as Hooked>::RequestedPadding as PaddingRequest>::PaddingStrategy<<H as Hooked>::Stake>;
+/// The [`ResolvedStake`] of this strategies hook.
+#[expect(type_alias_bounds)]
+pub type StrategyStakes<S: Strategy<Q>, Q: Collection> = ResolvedStake<<S as Strategy<Q>>::Gambler>;
 
 /// A strategy that determines which arm is pulled next by a gambler
 pub trait Strategy<Q: Collection> {
@@ -105,8 +115,10 @@ pub trait Hook {
 
 /// Callbacks that update the gamblers state and stakes based on the outcome of its decision.
 pub trait Hooked {
-    /// The type of stake in an arm associated with this hook
+    /// The type of stake in an arm associated with this hook.
     type Stake: Default + Hook;
+    /// The type of padding that should be applied to this hooks stake.
+    type RequestedPadding: PaddingRequest + Truthiness;
     /// Update the gambler on a successful [`Collection::offer`]
     #[inline]
     fn on_offer_succ(&mut self, sub_state: &Self::Stake) {
@@ -262,74 +274,3 @@ impl Hook for EDCount {
 }
 
 impl Hook for () {}
-
-impl<T> Hook for CachePadded<T>
-where
-    T: Hook,
-{
-    #[inline]
-    fn on_offer_succ(&self) {
-        T::on_offer_succ(self);
-    }
-
-    #[inline]
-    fn on_offer_fail(&self) {
-        T::on_offer_fail(self);
-    }
-
-    #[inline]
-    fn on_poll_succ(&self) {
-        T::on_poll_succ(self);
-    }
-
-    #[inline]
-    fn on_poll_fail(&self) {
-        T::on_poll_fail(self);
-    }
-}
-
-/// a transparent wrapper around a T
-#[repr(transparent)]
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct NoPad<T>(T);
-
-impl<T> Deref for NoPad<T> {
-    type Target = T;
-
-    #[inline]
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl<T> DerefMut for NoPad<T> {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.0
-    }
-}
-
-impl<T> Hook for NoPad<T>
-where
-    T: Hook,
-{
-    #[inline]
-    fn on_offer_succ(&self) {
-        T::on_offer_succ(self);
-    }
-
-    #[inline]
-    fn on_offer_fail(&self) {
-        T::on_offer_fail(self);
-    }
-
-    #[inline]
-    fn on_poll_succ(&self) {
-        T::on_poll_succ(self);
-    }
-
-    #[inline]
-    fn on_poll_fail(&self) {
-        T::on_poll_fail(self);
-    }
-}

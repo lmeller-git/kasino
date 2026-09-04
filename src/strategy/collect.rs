@@ -4,21 +4,27 @@ use core::{
     ops::{Deref, Index},
 };
 
-use crossbeam_utils::CachePadded;
-
 use crate::{
     Collection,
     Signature,
     storage::StorageBackend,
-    strategy::{Hook, Hooked, Strategy},
+    strategy::{
+        Hook,
+        Hooked,
+        Strategy,
+        padded::{
+            RequiresPadding,
+            truthiness::{Evaluate, Or},
+        },
+    },
     sync::atomic::{AtomicUsize, Ordering},
 };
 
 /// Does not collect any remaining items
 #[derive(Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Clone, Copy)]
-pub struct NoCollect<S>(S);
+pub struct NoCollectPoll<S>(S);
 
-impl<Q: Collection, S: Strategy<Q>> Strategy<Q> for NoCollect<S> {
+impl<Q: Collection, S: Strategy<Q>> Strategy<Q> for NoCollectPoll<S> {
     type Gambler = S::Gambler;
 
     #[inline]
@@ -61,6 +67,25 @@ impl<Q: Collection, S: Strategy<Q>> Strategy<Q> for NoCollect<S> {
     {
         None
     }
+
+    #[inline]
+    fn on_offer_fail<'b, 'c>(
+        &self,
+        state: &impl StorageBackend<<Self::Gambler as Hooked>::Stake>,
+        bandit_arms: &'c impl StorageBackend<Q>,
+        input: <<Q as Collection>::OfferSignature as Signature>::Error<'b, 'c>,
+    ) -> Result<
+        (
+            <<Q as Collection>::OfferSignature as Signature>::Output<'b, 'c>,
+            usize,
+        ),
+        <<Q as Collection>::OfferSignature as Signature>::Error<'b, 'c>,
+    >
+    where
+        Q: 'c,
+    {
+        self.0.on_offer_fail(state, bandit_arms, input)
+    }
 }
 
 pub(crate) trait View<'a, T> {
@@ -72,6 +97,7 @@ where
     K: Deref<Target = U>,
     U: View<'a, T> + 'a,
 {
+    #[inline]
     fn project(&'a self) -> &'a T {
         U::project(self)
     }
@@ -83,7 +109,8 @@ pub(crate) struct StorageView<'a, B, T, K> {
 }
 
 impl<'a, B, T, K> StorageView<'a, B, T, K> {
-    fn new(backend: &'a B) -> Self {
+    #[inline]
+    pub(crate) fn new(backend: &'a B) -> Self {
         Self {
             backend,
             _phantom: PhantomData,
@@ -97,6 +124,7 @@ where
 {
     type Output = T;
 
+    #[inline]
     fn index(&self, index: usize) -> &Self::Output {
         self.backend[index].project()
     }
@@ -109,10 +137,12 @@ where
 {
     type Rebind<U> = B::Rebind<U>;
 
+    #[inline]
     fn len(&self) -> usize {
         self.backend.len()
     }
 
+    #[inline]
     fn iter<'a>(&'a self) -> impl Iterator<Item = &'a T>
     where
         T: 'a,
@@ -120,10 +150,12 @@ where
         self.backend.iter().map(|i| i.project())
     }
 
+    #[inline]
     fn is_empty(&self) -> bool {
         self.backend.is_empty()
     }
 
+    #[inline]
     fn map_to_buffer<U>(&self, f: impl Fn(usize) -> U) -> Self::Rebind<U> {
         self.backend.map_to_buffer(f)
     }
@@ -133,8 +165,9 @@ impl<'a, B, T, K> IntoIterator for StorageView<'a, B, T, K> {
     type IntoIter = core::array::IntoIter<(), 0>;
     type Item = ();
 
+    #[inline]
     fn into_iter(self) -> Self::IntoIter {
-        [].into_iter()
+        unimplemented!()
     }
 }
 
@@ -178,9 +211,9 @@ use policy::{InvalidationPolicy, OfferInvalidate};
 ///
 /// This strategy promises empty-linearizability, given the same holds for the raw [`Collection`].
 #[derive(Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Clone, Copy)]
-pub struct DoubleCollect<S, P = OfferInvalidate>(S, PhantomData<P>);
+pub struct DoubleCollectPoll<S, P = OfferInvalidate>(S, PhantomData<P>);
 
-impl<S, P> DoubleCollect<S, P> {
+impl<S, P> DoubleCollectPoll<S, P> {
     /// Constructs a new `DoubleCollect`.
     #[inline]
     pub const fn new(strategy: S) -> Self {
@@ -219,7 +252,8 @@ impl<'a, S, P> View<'a, S> for DoubleCollectState<S, P> {
 }
 
 impl<A: Hooked, P: InvalidationPolicy> Hooked for DoubleCollectGambler<A, P> {
-    type Stake = CachePadded<DoubleCollectState<A::Stake, P>>;
+    type RequestedPadding = Evaluate<Or<RequiresPadding, <A as Hooked>::RequestedPadding>>;
+    type Stake = DoubleCollectState<A::Stake, P>;
 }
 
 impl<T: Hook, P: InvalidationPolicy> Hook for DoubleCollectState<T, P> {
@@ -240,7 +274,7 @@ impl<T: Hook, P: InvalidationPolicy> Hook for DoubleCollectState<T, P> {
     }
 }
 
-impl<S: Strategy<Q>, Q: Collection, P: InvalidationPolicy> Strategy<Q> for DoubleCollect<S, P> {
+impl<S: Strategy<Q>, Q: Collection, P: InvalidationPolicy> Strategy<Q> for DoubleCollectPoll<S, P> {
     type Gambler = DoubleCollectGambler<S::Gambler, P>;
 
     #[inline]
@@ -313,5 +347,25 @@ impl<S: Strategy<Q>, Q: Collection, P: InvalidationPolicy> Strategy<Q> for Doubl
 
             return None;
         }
+    }
+
+    #[inline]
+    fn on_offer_fail<'b, 'c>(
+        &self,
+        state: &impl StorageBackend<<Self::Gambler as Hooked>::Stake>,
+        bandit_arms: &'c impl StorageBackend<Q>,
+        input: <<Q as Collection>::OfferSignature as Signature>::Error<'b, 'c>,
+    ) -> Result<
+        (
+            <<Q as Collection>::OfferSignature as Signature>::Output<'b, 'c>,
+            usize,
+        ),
+        <<Q as Collection>::OfferSignature as Signature>::Error<'b, 'c>,
+    >
+    where
+        Q: 'c,
+    {
+        self.0
+            .on_offer_fail(&StorageView::new(state), bandit_arms, input)
     }
 }

@@ -12,7 +12,7 @@ use crate::sync::atomic::AtomicU64;
 use crate::{
     Collection,
     storage::StorageBackend,
-    strategy::{Hooked, InstrumentedState, NoPad, Strategy},
+    strategy::{Hooked, InstrumentedState, Strategy, padded::NoPadding},
     sync::atomic::Ordering,
 };
 
@@ -189,5 +189,6 @@ impl<Q: Collection, S: RngExt + SeedableRng> Strategy<Q> for RandomAccess<S> {
 }
 
 impl<S> Hooked for RandomAccessGambler<S> {
-    type Stake = NoPad<InstrumentedState<()>>;
+    type RequestedPadding = NoPadding;
+    type Stake = InstrumentedState<()>;
 }

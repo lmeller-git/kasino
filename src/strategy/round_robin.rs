@@ -1,7 +1,7 @@
 use crate::{
     Collection,
     storage::StorageBackend,
-    strategy::{Hooked, InstrumentedState, NoPad, Strategy, random::FastPRNG},
+    strategy::{Hooked, InstrumentedState, Strategy, padded::NoPadding, random::FastPRNG},
 };
 
 /// A round robin scheduler.
@@ -63,5 +63,6 @@ impl<Q: Collection> Strategy<Q> for RoundRobin {
 }
 
 impl Hooked for RoundRobinGambler {
-    type Stake = NoPad<InstrumentedState<()>>;
+    type RequestedPadding = NoPadding;
+    type Stake = InstrumentedState<()>;
 }

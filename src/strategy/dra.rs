@@ -1,12 +1,11 @@
 use core::marker::PhantomData;
 
-use crossbeam_utils::CachePadded;
 use rand::{RngExt, SeedableRng, rngs::SmallRng};
 
 use crate::{
     Collection,
     storage::StorageBackend,
-    strategy::{EDCount, Hooked, Strategy, random::PerThreadRng},
+    strategy::{EDCount, Hooked, Strategy, padded::RequiresPadding, random::PerThreadRng},
     sync::atomic::Ordering,
 };
 
@@ -91,5 +90,6 @@ impl<R: RngExt + SeedableRng, Q: Collection, const CHOOSE: usize> Strategy<Q> fo
 }
 
 impl<R, const CHOOSE: usize> Hooked for DRAGambler<CHOOSE, R> {
-    type Stake = CachePadded<EDCount>;
+    type RequestedPadding = RequiresPadding;
+    type Stake = EDCount;
 }

@@ -151,7 +151,7 @@ pub mod prelude {
         InlineBandit,
         InlineBanditHandle,
         Signature,
-        strategy::{DCBO, DRA, DoubleCollect, NoCollect, RandomAccess, RoundRobin},
+        strategy::{DCBO, DRA, DoubleCollectPoll, NoCollectPoll, RandomAccess, RoundRobin},
     };
 }
 

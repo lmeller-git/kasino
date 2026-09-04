@@ -1,6 +1,6 @@
 use crate::{
     InlineBandit,
-    strategy::{DCBO, DoubleCollect},
+    strategy::{DCBO, DoubleCollectPoll},
     tests::test_library::{LockedDeque, linearizable, mpmc, mpmc_ring_buffer, mpsc, spsc},
 };
 
@@ -59,7 +59,7 @@ fn mpmc_ring_buffer_impl() {
 fn linearizable_impl() {
     shuttle::check_pct(
         || {
-            let q: InlineBandit<LockedDeque<u32>, DoubleCollect<DCBO>, 2> = InlineBandit::new();
+            let q: InlineBandit<LockedDeque<u32>, DoubleCollectPoll<DCBO>, 2> = InlineBandit::new();
             linearizable(q.buy_in());
         },
         RETRIES,

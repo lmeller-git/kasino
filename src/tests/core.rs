@@ -1,6 +1,6 @@
 use crate::{
     InlineBandit,
-    strategy::{DCBO, DoubleCollect},
+    strategy::{DCBO, DoubleCollectPoll},
     tests::test_library::{
         LockedDeque,
         force_push,
@@ -77,7 +77,7 @@ mod boxed {
 
     #[test]
     fn linearizable_impl() {
-        let q: BoxedBandit<LockedDeque<u32>, DoubleCollect<DCBO>> = BoxedBandit::new(2);
+        let q: BoxedBandit<LockedDeque<u32>, DoubleCollectPoll<DCBO>> = BoxedBandit::new(2);
         linearizable(q.buy_in());
     }
 }
@@ -140,7 +140,7 @@ mod dcbo {
 
     #[test]
     fn linearizable_impl() {
-        let q: InlineBandit<LockedDeque<u32>, DoubleCollect<DCBO>, 2> = InlineBandit::new();
+        let q: InlineBandit<LockedDeque<u32>, DoubleCollectPoll<DCBO>, 2> = InlineBandit::new();
         linearizable(q.buy_in());
     }
 }
@@ -205,7 +205,7 @@ mod dra {
 
     #[test]
     fn linearizable_impl() {
-        let q: InlineBandit<LockedDeque<u32>, DoubleCollect<DRA>, 2> = InlineBandit::new();
+        let q: InlineBandit<LockedDeque<u32>, DoubleCollectPoll<DRA>, 2> = InlineBandit::new();
         linearizable(q.buy_in());
     }
 }
@@ -270,7 +270,8 @@ mod random {
 
     #[test]
     fn linearizable_impl() {
-        let q: InlineBandit<LockedDeque<u32>, DoubleCollect<RandomAccess>, 2> = InlineBandit::new();
+        let q: InlineBandit<LockedDeque<u32>, DoubleCollectPoll<RandomAccess>, 2> =
+            InlineBandit::new();
         linearizable(q.buy_in());
     }
 }
@@ -335,7 +336,8 @@ mod round_robin {
 
     #[test]
     fn linearizable_impl() {
-        let q: InlineBandit<LockedDeque<u32>, DoubleCollect<RoundRobin>, 2> = InlineBandit::new();
+        let q: InlineBandit<LockedDeque<u32>, DoubleCollectPoll<RoundRobin>, 2> =
+            InlineBandit::new();
         linearizable(q.buy_in());
     }
 }
