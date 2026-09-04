@@ -43,7 +43,7 @@ categories = ["data-structures", "algorithms", "concurrency", "no-std::no-alloc"
 rust-version = "1.85.0"
 
 [features]
-default = ["alloc"]
+default = []
 std = ["alloc"]
 alloc = []
 instrumented = []
