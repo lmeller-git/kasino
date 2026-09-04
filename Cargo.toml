@@ -1,7 +1,7 @@
 [workspace]
 resolver = "3"
 members = [
-  "crates/kasino",
+  "crates/kasino", "crates/kasino-topology",
   "crates/profiling",
 ]
 

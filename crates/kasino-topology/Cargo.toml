@@ -1,0 +1,19 @@
+[package]
+name = "kasino-topology"
+version = "0.1.0"
+edition.workspace = true
+authors.workspace = true
+description.workspace = true
+documentation.workspace = true
+readme = "README.md"
+license.workspace = true
+repository.workspace = true
+keywords.workspace = true
+categories.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+kasino = { workspace = true }
+
+[lints]
+workspace = true
