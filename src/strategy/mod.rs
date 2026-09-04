@@ -51,7 +51,7 @@ pub trait Strategy<Q: Collection> {
 
     /// Ensure that we checked all arms in a consistent manner after [`Collection::poll`] failed on the arm we pulled.
     #[inline]
-    fn collect<'b, 'c>(
+    fn on_poll_fail<'b, 'c>(
         &self,
         _state: &impl StorageBackend<<Self::Gambler as Hooked>::Stake>,
         bandit_arms: &'c impl StorageBackend<Q>,
@@ -66,6 +66,24 @@ pub trait Strategy<Q: Collection> {
             }
         }
         None
+    }
+
+    /// Ensure that we checked all arms in a consistent manner after [`Collection::offer`] failed on the arm we pulled.
+    #[expect(clippy::type_complexity)]
+    #[inline]
+    fn on_offer_fail<'b, 'c>(
+        &self,
+        _state: &impl StorageBackend<<Self::Gambler as Hooked>::Stake>,
+        _bandit_arms: &'c impl StorageBackend<Q>,
+        input: <Q::OfferSignature as Signature>::Error<'b, 'c>,
+    ) -> Result<
+        (<Q::OfferSignature as Signature>::Output<'b, 'c>, usize),
+        <Q::OfferSignature as Signature>::Error<'b, 'c>,
+    >
+    where
+        Q: 'c,
+    {
+        Err(input)
     }
 }
 

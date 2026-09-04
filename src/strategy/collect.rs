@@ -50,7 +50,7 @@ impl<Q: Collection, S: Strategy<Q>> Strategy<Q> for NoCollect<S> {
     }
 
     #[inline]
-    fn collect<'b, 'c>(
+    fn on_poll_fail<'b, 'c>(
         &self,
         _state: &impl StorageBackend<<Self::Gambler as Hooked>::Stake>,
         _sub_collections: &'c impl StorageBackend<Q>,
@@ -284,7 +284,7 @@ impl<S: Strategy<Q>, Q: Collection, P: InvalidationPolicy> Strategy<Q> for Doubl
     }
 
     #[expect(clippy::missing_inline_in_public_items)]
-    fn collect<'b, 'c>(
+    fn on_poll_fail<'b, 'c>(
         &self,
         state: &impl StorageBackend<<Self::Gambler as Hooked>::Stake>,
         sub_collections: &'c impl StorageBackend<Q>,

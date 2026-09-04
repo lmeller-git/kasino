@@ -201,7 +201,7 @@ impl<T, S: Strategy<ReaderShard<T>>> Strategy<ReaderShard<T>> for RwLockStrategy
         self.0.create_gambler()
     }
 
-    fn collect<'b, 'c>(
+    fn on_poll_fail<'b, 'c>(
         &self,
         _state: &impl StorageBackend<<Self::Gambler as Hooked>::Stake>,
         sub_collections: &'c impl StorageBackend<ReaderShard<T>>,

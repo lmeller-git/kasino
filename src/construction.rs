@@ -122,6 +122,8 @@ where
     }
 
     /// Make a call to [`Collection::offer`] to an arms as chosen by this handles gambler.
+    ///
+    /// If the call fails, [`Strategy::on_offer_fail`] may be called to ensure consistency across all arms.
     #[inline]
     pub fn offer<'b, 'c>(
         &'c mut self,
@@ -130,25 +132,73 @@ where
         <Q::OfferSignature as Signature>::Output<'b, 'c>,
         <Q::OfferSignature as Signature>::Error<'b, 'c>,
     > {
-        let i = self
-            .parent
+        Self::offer_internal(self.parent, &mut self.gambler, item).0
+    }
+
+    /// Makes a call to [`Collection::offer`] and returns the stake associated with the arm we pulled.
+    ///
+    /// If the call fails, [`Strategy::on_offer_fail`] may be called to ensure consistency across all arms.
+    ///
+    /// On failure returns the info associated with the arm originally pulled.
+    #[inline]
+    #[expect(clippy::type_complexity)]
+    pub fn offer_with_info<'b, 'c>(
+        &'c mut self,
+        item: <Q::OfferSignature as Signature>::Input<'b>,
+    ) -> (
+        Result<
+            <Q::OfferSignature as Signature>::Output<'b, 'c>,
+            <Q::OfferSignature as Signature>::Error<'b, 'c>,
+        >,
+        &'c <S::Gambler as Hooked>::Stake,
+    ) {
+        let (res, idx) = Self::offer_internal(self.parent, &mut self.gambler, item);
+        (res, &self.parent.collection_state[idx])
+    }
+
+    /// Makes a call to [`Self::offer`] and returns the index associated with the arm we pulled.    #[inline]
+    #[expect(clippy::type_complexity)]
+    pub(crate) fn offer_internal<'b, 'c>(
+        parent: &'c Bandit<Q, S, B, C, SUB_CAP>,
+        gambler: &mut S::Gambler,
+        item: <Q::OfferSignature as Signature>::Input<'b>,
+    ) -> (
+        Result<
+            <Q::OfferSignature as Signature>::Output<'b, 'c>,
+            <Q::OfferSignature as Signature>::Error<'b, 'c>,
+        >,
+        usize,
+    ) {
+        let i = parent
             .strategy
-            .choose_offer_arm(&self.parent.collection_state, &mut self.gambler);
-        match self.parent.sub_collections[i].offer(item) {
+            .choose_offer_arm(&parent.collection_state, gambler);
+        match parent.sub_collections[i].offer(item) {
             Ok(r) => {
-                self.gambler.on_offer_succ(&self.parent.collection_state[i]);
-                Ok(r)
+                gambler.on_offer_succ(&parent.collection_state[i]);
+                (Ok(r), i)
             }
             Err(e) => {
-                self.gambler.on_offer_fail(&self.parent.collection_state[i]);
-                Err(e)
+                gambler.on_offer_fail(&parent.collection_state[i]);
+                let r = parent.strategy.on_offer_fail(
+                    &parent.collection_state,
+                    &parent.sub_collections,
+                    e,
+                );
+
+                match r {
+                    Ok((out, i)) => {
+                        gambler.on_offer_succ(&parent.collection_state[i]);
+                        (Ok(out), i)
+                    }
+                    Err(e) => (Err(e), i),
+                }
             }
         }
     }
 
     /// Make a call to [`Collection::poll`] to an arm as chosen by this handles gambler.
     ///
-    /// If the call fails, [`Strategy::collect`] may be called to ensure consistency across all arms.
+    /// If the call fails, [`Strategy::on_poll_fail`] may be called to ensure consistency across all arms.
     #[inline]
     pub fn poll<'b, 'c>(
         &'c mut self,
@@ -160,7 +210,9 @@ where
         Self::poll_internal(self.parent, &mut self.gambler, input).0
     }
 
-    /// Makes a call to [`Self::poll`] and returns the stake associated with the arm we pulled.
+    /// Makes a call to [`Collection::poll`] and returns the stake associated with the arm we pulled.
+    ///
+    /// If the call fails, [`Strategy::on_poll_fail`] may be called to ensure consistency across all arms.
     ///
     /// On failure returns the info associated with the arm originally pulled.
     #[expect(clippy::type_complexity)]
@@ -173,13 +225,10 @@ where
             <Q::PollSignature as Signature>::Output<'b, 'c>,
             <Q::PollSignature as Signature>::Error<'b, 'c>,
         >,
-        <S::Gambler as Hooked>::Stake,
-    )
-    where
-        <S::Gambler as Hooked>::Stake: Clone,
-    {
+        &'c <S::Gambler as Hooked>::Stake,
+    ) {
         let (res, idx) = Self::poll_internal(self.parent, &mut self.gambler, input);
-        (res, self.parent.collection_state[idx].clone())
+        (res, &self.parent.collection_state[idx])
     }
 
     /// Makes a call to [`Self::poll`] and returns the index associated with the arm we pulled.
@@ -205,7 +254,7 @@ where
             }
             Err(e) => {
                 gambler.on_poll_fail(&parent.collection_state[i]);
-                let r = parent.strategy.collect(
+                let r = parent.strategy.on_poll_fail(
                     &parent.collection_state,
                     &parent.sub_collections,
                     input,
