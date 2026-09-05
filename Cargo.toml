@@ -1,8 +1,9 @@
 [workspace]
 resolver = "3"
 members = [
-  "crates/kasino", "crates/kasino-topology",
-  "crates/profiling",
+  "kasino",
+  "kasino-topology",
+  "kasino-profiling",
 ]
 
 [workspace.package]
@@ -18,7 +19,7 @@ categories = ["data-structures", "algorithms", "concurrency", "no-std::no-alloc"
 rust-version = "1.85.0"
 
 [workspace.dependencies]
-kasino = { path = "crates/kasino", version = "0.3.0" }
+kasino = { path = "kasino", version = "0.3.0" }
 crossbeam-utils = { version = "0.8.21", default-features = false }
 
 [workspace.lints.rust]
