@@ -332,6 +332,26 @@ impl<'a, S, P> View<'a, S> for DoubleCollectState<S, P> {
 impl<A: Hooked, P: InvalidationPolicy> Hooked for DoubleCollectGambler<A, P> {
     type RequestedPadding = Evaluate<Or<RequiresPadding, <A as Hooked>::RequestedPadding>>;
     type Stake = DoubleCollectState<A::Stake, P>;
+
+    fn on_offer_succ(&mut self, sub_state: &Self::Stake) {
+        sub_state.on_offer_succ();
+        self.gambler.on_offer_succ(&sub_state.strategy);
+    }
+
+    fn on_offer_fail(&mut self, sub_state: &Self::Stake) {
+        sub_state.on_offer_fail();
+        self.gambler.on_offer_fail(&sub_state.strategy);
+    }
+
+    fn on_poll_succ(&mut self, sub_state: &Self::Stake) {
+        sub_state.on_poll_succ();
+        self.gambler.on_poll_succ(&sub_state.strategy);
+    }
+
+    fn on_poll_fail(&mut self, sub_state: &Self::Stake) {
+        sub_state.on_poll_fail();
+        self.gambler.on_poll_fail(&sub_state.strategy);
+    }
 }
 
 impl<T: Hook, P: InvalidationPolicy> Hook for DoubleCollectState<T, P> {
@@ -339,16 +359,12 @@ impl<T: Hook, P: InvalidationPolicy> Hook for DoubleCollectState<T, P> {
         if P::INVALIDATE_ON_OFFER {
             self.epoch.fetch_add(1, Ordering::Release);
         }
-
-        self.strategy.on_offer_succ();
     }
 
     fn on_poll_succ(&self) {
         if P::INVALIDATE_ON_POLL {
             self.epoch.fetch_add(1, Ordering::Release);
         }
-
-        self.strategy.on_poll_succ();
     }
 }
 
