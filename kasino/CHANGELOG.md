@@ -8,7 +8,7 @@
 - [CHANGED] rename old collection strategies and rename `Strategy::collect` to `Strategy::on_poll_fail`.
 - [ADDED] add `on_offer_fail` to `Strategy`, as well as stnadrd strategies for this.
 - [ADDED] add `offer_with_info` to `Bandit`.
-- [CHANGED] cache padding for strategy stakes is now applied at storage level based on the combined padding requests of the fully resolved stake.
+- [CHANGED] cache padding for strategy stakes is now applied at storage level based on the combined padding requests of the fully resolved stake. Add generic machinery for this.
 - [ADDED] add options for specifying padding requests of particular strategy hooks, as well as required associated type on `Hooked` for probagating padding requests upward.
 - [CHANGED] rename `EDCount` to `InteractionCount`.
 
