@@ -7,8 +7,13 @@ use core::{
 
 use crossbeam_utils::CachePadded;
 
-use crate::strategy::Hook;
+use crate::strategy::{
+    Hook,
+    padded::type_eval::{Eval, False, True, Truthiness},
+};
 
+// This is sealed because `or` evaluation of the padding requests means that we cannot differentiate between two truthy or two falsy requests.
+// Thus if arbitrary reqeuests were implemented, then we would have to think about how to propagate them upward, which may require a more sophisticated scheme than or based propagation.
 /// Specifies which kind of padding this type requests at the storage level.
 #[expect(private_bounds)]
 pub trait PaddingRequest: Sealed {
@@ -118,8 +123,8 @@ impl Truthiness for RequiresPadding {
     type IsTruthy = True;
 }
 
-pub use truthiness::*;
-pub(crate) mod truthiness {
+pub mod type_eval {
+    //! Machinery to evaluate type level `or` expression.
 
     use super::*;
 

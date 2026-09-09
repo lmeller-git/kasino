@@ -20,7 +20,7 @@ use crate::{
     Collection,
     Signature,
     storage::StorageBackend,
-    strategy::padded::{PaddingRequest, truthiness::Truthiness},
+    strategy::padded::{PaddingRequest, type_eval::Truthiness},
     sync::atomic::{AtomicUsize, Ordering},
 };
 

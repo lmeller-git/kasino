@@ -14,7 +14,7 @@ use crate::{
         Strategy,
         padded::{
             RequiresPadding,
-            truthiness::{Evaluate, Or},
+            type_eval::{Evaluate, Or},
         },
     },
     sync::atomic::{AtomicUsize, Ordering},
