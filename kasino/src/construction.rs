@@ -5,7 +5,7 @@ use crate::{
     Signature,
     components::PushPopCollection,
     storage::StorageBackend,
-    strategy::{Hooked, StorageView, Strategy, StrategyStakes, View},
+    strategy::{Hooked, StorageView, Strategy, StrategyStakes},
 };
 
 pub(crate) const DEFAULT_QUEUE_CAP: usize = 32;
@@ -168,7 +168,7 @@ where
         &'c <S::Gambler as Hooked>::Stake,
     ) {
         let (res, idx) = Self::offer_internal(self.parent, &mut self.gambler, item);
-        (res, self.parent.collection_state[idx].project())
+        (res, &self.parent.collection_state[idx])
     }
 
     /// Makes a call to [`Self::offer`] and returns the index associated with the arm we pulled.    #[inline]
@@ -189,11 +189,11 @@ where
             .choose_offer_arm(&StorageView::new(&parent.collection_state), gambler);
         match parent.sub_collections[i].offer(item) {
             Ok(r) => {
-                gambler.on_offer_succ(parent.collection_state[i].project());
+                gambler.on_offer_succ(&parent.collection_state[i]);
                 (Ok(r), i)
             }
             Err(e) => {
-                gambler.on_offer_fail(parent.collection_state[i].project());
+                gambler.on_offer_fail(&parent.collection_state[i]);
                 let r = parent.strategy.on_offer_fail(
                     &StorageView::new(&parent.collection_state),
                     &parent.sub_collections,
@@ -202,7 +202,7 @@ where
 
                 match r {
                     Ok((out, i)) => {
-                        gambler.on_offer_succ(parent.collection_state[i].project());
+                        gambler.on_offer_succ(&parent.collection_state[i]);
                         (Ok(out), i)
                     }
                     Err(e) => (Err(e), i),
@@ -243,7 +243,7 @@ where
         &'c <S::Gambler as Hooked>::Stake,
     ) {
         let (res, idx) = Self::poll_internal(self.parent, &mut self.gambler, input);
-        (res, self.parent.collection_state[idx].project())
+        (res, &self.parent.collection_state[idx])
     }
 
     /// Makes a call to [`Self::poll`] and returns the index associated with the arm we pulled.
@@ -264,18 +264,18 @@ where
             .choose_poll_arm(&StorageView::new(&parent.collection_state), gambler);
         match parent.sub_collections[i].poll(input) {
             Ok(r) => {
-                gambler.on_poll_succ(parent.collection_state[i].project());
+                gambler.on_poll_succ(&parent.collection_state[i]);
                 (Ok(r), i)
             }
             Err(e) => {
-                gambler.on_poll_fail(parent.collection_state[i].project());
+                gambler.on_poll_fail(&parent.collection_state[i]);
                 let r = parent.strategy.on_poll_fail(
                     &StorageView::new(&parent.collection_state),
                     &parent.sub_collections,
                     input,
                 );
                 if let Some((r, state)) = r {
-                    gambler.on_poll_succ(parent.collection_state[state].project());
+                    gambler.on_poll_succ(&parent.collection_state[state]);
                     (Ok(r), state)
                 } else {
                     (Err(e), i)

@@ -166,123 +166,6 @@ impl<Q: Collection, S: Strategy<Q>> Strategy<Q> for NoCollectPoll<S> {
     }
 }
 
-pub(crate) trait View<'a, T> {
-    fn project(&'a self) -> &'a T;
-}
-
-impl<'a, K, U, T> View<'a, T> for K
-where
-    K: Deref<Target = U>,
-    U: View<'a, T> + 'a,
-{
-    #[inline]
-    fn project(&'a self) -> &'a T {
-        U::project(self)
-    }
-}
-
-pub(crate) struct StorageView<'a, B, T, K> {
-    backend: &'a B,
-    _phantom: PhantomData<(&'a T, &'a K)>,
-}
-
-impl<'a, B, T, K> StorageView<'a, B, T, K> {
-    #[inline]
-    pub(crate) fn new(backend: &'a B) -> Self {
-        Self {
-            backend,
-            _phantom: PhantomData,
-        }
-    }
-}
-
-impl<'a, B: Index<usize>, T, K> Index<usize> for StorageView<'a, B, T, K>
-where
-    B::Output: View<'a, T>,
-{
-    type Output = T;
-
-    #[inline]
-    fn index(&self, index: usize) -> &Self::Output {
-        self.backend[index].project()
-    }
-}
-
-impl<'b, B, T, K> StorageBackend<T> for StorageView<'b, B, T, K>
-where
-    B: StorageBackend<K>,
-    K: View<'b, T>,
-{
-    type Rebind<U> = B::Rebind<U>;
-
-    #[inline]
-    fn len(&self) -> usize {
-        self.backend.len()
-    }
-
-    #[inline]
-    fn iter<'a>(&'a self) -> impl Iterator<Item = &'a T>
-    where
-        T: 'a,
-    {
-        self.backend.iter().map(|i| i.project())
-    }
-
-    #[inline]
-    fn is_empty(&self) -> bool {
-        self.backend.is_empty()
-    }
-
-    #[inline]
-    fn map_to_buffer<U>(&self, f: impl Fn(usize) -> U) -> Self::Rebind<U> {
-        self.backend.map_to_buffer(f)
-    }
-}
-
-impl<'a, B, T, K> IntoIterator for StorageView<'a, B, T, K> {
-    type IntoIter = core::array::IntoIter<(), 0>;
-    type Item = ();
-
-    #[inline]
-    fn into_iter(self) -> Self::IntoIter {
-        unimplemented!()
-    }
-}
-
-pub mod policy {
-    //! Policies dictating when global state must be rechecked by a collection strategy.
-
-    /// A policy that dictates that the global state needs to be rechecked if a concurrent call to [`crate::Collection::offer`] happens.
-    #[derive(Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Clone, Copy)]
-    pub struct OfferInvalidate;
-    /// A policy that dictates that the global state needs to be rechecked if a concurrent call to [`crate::Collection::poll`] happens.
-    #[derive(Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Clone, Copy)]
-    pub struct PollInvalidate;
-    /// A policy that dictates that the global state needs to be rechecked if a concurrent call to [`crate::Collection::offer`] or [`crate::Collection::poll`] happens.
-    #[derive(Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Clone, Copy)]
-    pub struct OfferAndPollInvalidate;
-
-    pub(crate) trait InvalidationPolicy {
-        const INVALIDATE_ON_POLL: bool;
-        const INVALIDATE_ON_OFFER: bool;
-    }
-
-    impl InvalidationPolicy for OfferInvalidate {
-        const INVALIDATE_ON_OFFER: bool = true;
-        const INVALIDATE_ON_POLL: bool = false;
-    }
-
-    impl InvalidationPolicy for OfferAndPollInvalidate {
-        const INVALIDATE_ON_OFFER: bool = true;
-        const INVALIDATE_ON_POLL: bool = true;
-    }
-
-    impl InvalidationPolicy for PollInvalidate {
-        const INVALIDATE_ON_OFFER: bool = false;
-        const INVALIDATE_ON_POLL: bool = true;
-    }
-}
-
 use policy::{InvalidationPolicy, OfferInvalidate};
 
 /// Runs a double collect on a failed poll.
@@ -323,8 +206,10 @@ impl<S: Default, P> Default for DoubleCollectState<S, P> {
     }
 }
 
-impl<'a, S, P> View<'a, S> for DoubleCollectState<S, P> {
-    fn project(&'a self) -> &'a S {
+impl<S, P> Deref for DoubleCollectState<S, P> {
+    type Target = S;
+
+    fn deref(&self) -> &Self::Target {
         &self.strategy
     }
 }
@@ -461,5 +346,111 @@ impl<S: Strategy<Q>, Q: Collection, P: InvalidationPolicy> Strategy<Q> for Doubl
     {
         self.0
             .on_offer_fail(&StorageView::new(state), bandit_arms, input)
+    }
+}
+
+pub mod policy {
+    //! Policies dictating when global state must be rechecked by a collection strategy.
+
+    /// A policy that dictates that the global state needs to be rechecked if a concurrent call to [`crate::Collection::offer`] happens.
+    #[derive(Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Clone, Copy)]
+    pub struct OfferInvalidate;
+    /// A policy that dictates that the global state needs to be rechecked if a concurrent call to [`crate::Collection::poll`] happens.
+    #[derive(Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Clone, Copy)]
+    pub struct PollInvalidate;
+    /// A policy that dictates that the global state needs to be rechecked if a concurrent call to [`crate::Collection::offer`] or [`crate::Collection::poll`] happens.
+    #[derive(Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Clone, Copy)]
+    pub struct OfferAndPollInvalidate;
+
+    pub(crate) trait InvalidationPolicy {
+        const INVALIDATE_ON_POLL: bool;
+        const INVALIDATE_ON_OFFER: bool;
+    }
+
+    impl InvalidationPolicy for OfferInvalidate {
+        const INVALIDATE_ON_OFFER: bool = true;
+        const INVALIDATE_ON_POLL: bool = false;
+    }
+
+    impl InvalidationPolicy for OfferAndPollInvalidate {
+        const INVALIDATE_ON_OFFER: bool = true;
+        const INVALIDATE_ON_POLL: bool = true;
+    }
+
+    impl InvalidationPolicy for PollInvalidate {
+        const INVALIDATE_ON_OFFER: bool = false;
+        const INVALIDATE_ON_POLL: bool = true;
+    }
+}
+
+pub(crate) struct StorageView<'a, B, T, K> {
+    backend: &'a B,
+    _phantom: PhantomData<(&'a T, &'a K)>,
+}
+
+impl<'a, B, T, K> StorageView<'a, B, T, K> {
+    #[inline]
+    pub(crate) fn new(backend: &'a B) -> Self {
+        Self {
+            backend,
+            _phantom: PhantomData,
+        }
+    }
+}
+
+impl<'a, B: Index<usize>, T, K> Index<usize> for StorageView<'a, B, T, K>
+where
+    B::Output: Deref<Target = T>,
+{
+    type Output = T;
+
+    #[inline]
+    fn index(&self, index: usize) -> &Self::Output {
+        &self.backend[index]
+    }
+}
+
+impl<'b, B, T, K> StorageBackend<T> for StorageView<'b, B, T, K>
+where
+    B: StorageBackend<K>,
+    K: Deref<Target = T>,
+{
+    type Rebind<U> = B::Rebind<U>;
+
+    #[inline]
+    fn len(&self) -> usize {
+        self.backend.len()
+    }
+
+    #[inline]
+    fn iter<'a>(&'a self) -> impl Iterator<Item = &'a T>
+    where
+        T: 'a,
+    {
+        self.backend.iter().map(|i| &**i)
+    }
+
+    #[inline]
+    fn is_empty(&self) -> bool {
+        self.backend.is_empty()
+    }
+
+    #[inline]
+    fn map_to_buffer<U>(&self, f: impl Fn(usize) -> U) -> Self::Rebind<U> {
+        self.backend.map_to_buffer(f)
+    }
+}
+
+impl<'a, B, T, K> IntoIterator for StorageView<'a, B, T, K> {
+    type IntoIter = core::array::IntoIter<(), 0>;
+    type Item = ();
+
+    /// Creates an Iterator from a value.
+    ///
+    /// # Panics
+    /// This method always panics.
+    #[inline]
+    fn into_iter(self) -> Self::IntoIter {
+        panic!("this type is a shared reference to a storage backend. We cannot consume it.")
     }
 }

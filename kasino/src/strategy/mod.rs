@@ -8,8 +8,8 @@ mod round_robin;
 
 use core::ops::{Deref, DerefMut};
 
+pub(crate) use collect::StorageView;
 pub use collect::{DoubleCollectPoll, LinearCollectOffer, NoCollectPoll, policy};
-pub(crate) use collect::{StorageView, View};
 pub use dcbo::DCBO;
 pub use dra::DRA;
 pub use random::RandomAccess;
@@ -232,12 +232,12 @@ where
 
 /// Stores the count of succesful offers and polls on a sub collection
 #[derive(Default, Debug)]
-pub struct EDCount {
+pub struct InteractionCount {
     offer_count: AtomicUsize,
     poll_count: AtomicUsize,
 }
 
-impl Clone for EDCount {
+impl Clone for InteractionCount {
     #[inline]
     fn clone(&self) -> Self {
         Self {
@@ -247,7 +247,7 @@ impl Clone for EDCount {
     }
 }
 
-impl EDCount {
+impl InteractionCount {
     /// The count of offers on a sub collection
     #[inline]
     pub fn offer_count(&self) -> usize {
@@ -261,7 +261,7 @@ impl EDCount {
     }
 }
 
-impl Hook for EDCount {
+impl Hook for InteractionCount {
     #[inline]
     fn on_offer_succ(&self) {
         self.offer_count.fetch_add(1, Ordering::Relaxed);

@@ -7,13 +7,13 @@ use core::{
 
 use crossbeam_utils::CachePadded;
 
-use crate::strategy::{Hook, collect::View};
+use crate::strategy::Hook;
 
 /// Specifies which kind of padding this type requests at the storage level.
 #[expect(private_bounds)]
 pub trait PaddingRequest: Sealed {
     /// The type of paddigng requested.
-    type PaddingStrategy<T>: for<'a> View<'a, T>;
+    type PaddingStrategy<T>: Deref<Target = T>;
 }
 
 impl<T> Hook for CachePadded<T>
@@ -41,89 +41,46 @@ where
     }
 }
 
-/// a transparent wrapper around a T
-#[repr(transparent)]
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct NoPad<T>(T);
-
-impl<'a, T> View<'a, T> for NoPad<T> {
-    #[inline]
-    fn project(&'a self) -> &'a T {
-        &self.0
-    }
-}
-
-impl<T> Hook for NoPad<T>
-where
-    T: Hook,
-{
-    #[inline]
-    fn on_offer_succ(&self) {
-        T::on_offer_succ(self.project());
-    }
-
-    #[inline]
-    fn on_offer_fail(&self) {
-        T::on_offer_fail(self.project());
-    }
-
-    #[inline]
-    fn on_poll_succ(&self) {
-        T::on_poll_succ(self.project());
-    }
-
-    #[inline]
-    fn on_poll_fail(&self) {
-        T::on_poll_fail(self.project());
-    }
-}
-
-impl<T> AsRef<T> for NoPad<T> {
-    #[inline]
-    fn as_ref(&self) -> &T {
-        self.project()
-    }
-}
-
-impl<T> AsMut<T> for NoPad<T> {
-    #[inline]
-    fn as_mut(&mut self) -> &mut T {
-        &mut self.0
-    }
-}
-
 /// A transparent wrapper around a T
 #[repr(transparent)]
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct TypeView<T>(T);
 
-impl<T, U> AsRef<T> for TypeView<U>
-where
-    U: Deref<Target = T>,
-{
+impl<T> Deref for TypeView<T> {
+    type Target = T;
+
     #[inline]
-    fn as_ref(&self) -> &T {
+    fn deref(&self) -> &Self::Target {
         &self.0
     }
 }
 
-impl<T, U> AsMut<T> for TypeView<U>
-where
-    U: DerefMut<Target = T>,
-{
+impl<T> DerefMut for TypeView<T> {
     #[inline]
-    fn as_mut(&mut self) -> &mut T {
+    fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.0
     }
 }
 
-impl<'a, T, K> View<'a, T> for TypeView<K>
-where
-    K: Deref<Target = T>,
-{
+impl<T: Hook> Hook for TypeView<T> {
     #[inline]
-    fn project(&'a self) -> &'a T {
-        &self.0
+    fn on_offer_succ(&self) {
+        self.0.on_offer_succ();
+    }
+
+    #[inline]
+    fn on_offer_fail(&self) {
+        self.0.on_offer_fail();
+    }
+
+    #[inline]
+    fn on_poll_succ(&self) {
+        self.0.on_poll_succ();
+    }
+
+    #[inline]
+    fn on_poll_fail(&self) {
+        self.0.on_poll_fail();
     }
 }
 
@@ -133,7 +90,7 @@ pub struct RequiresPadding;
 impl Sealed for RequiresPadding {}
 
 impl PaddingRequest for RequiresPadding {
-    type PaddingStrategy<T> = TypeView<CachePadded<T>>;
+    type PaddingStrategy<T> = CachePadded<T>;
 }
 
 /// This type requires no padding.
@@ -142,7 +99,7 @@ pub struct NoPadding;
 impl Sealed for NoPadding {}
 
 impl PaddingRequest for NoPadding {
-    type PaddingStrategy<T> = NoPad<T>;
+    type PaddingStrategy<T> = TypeView<T>;
 }
 
 impl Eval for NoPadding {
@@ -161,17 +118,20 @@ impl Truthiness for RequiresPadding {
     type IsTruthy = True;
 }
 
-use truthiness::*;
+pub use truthiness::*;
 pub(crate) mod truthiness {
-    #![expect(unnameable_types)]
 
     use super::*;
 
+    /// Truthiness of a type
     pub trait Truthiness {
+        /// Describes if this type is truthy
         type IsTruthy;
     }
 
+    /// This type is truthy
     pub struct True;
+    /// This type is falsy
     pub struct False;
 
     impl Eval for True {
@@ -182,11 +142,15 @@ pub(crate) mod truthiness {
         type Output = False;
     }
 
+    /// A typed expression
     pub trait Eval {
+        /// The resulting type of evaluating this typed expression
         type Output;
     }
 
+    /// Evaluates an `or` between two types
     pub trait TypeOr<R> {
+        /// The output of the or evaluation
         type Output;
     }
 
@@ -206,7 +170,9 @@ pub(crate) mod truthiness {
         type Output = <False as Eval>::Output;
     }
 
+    /// Forwards the output of the evaluation of one of the two subtypes
     pub trait Select<A, B> {
+        /// The output of this evaluation
         type Output;
     }
 
@@ -218,6 +184,7 @@ pub(crate) mod truthiness {
         type Output = <B as Eval>::Output;
     }
 
+    /// Evaluates to the type of the truthy subtype
     pub struct Or<A, B>(PhantomData<(A, B)>);
 
     impl<A, B> Truthiness for Or<A, B>
@@ -239,7 +206,8 @@ pub(crate) mod truthiness {
     }
 
     #[expect(type_alias_bounds)]
-    pub(crate) type Evaluate<T: Eval> = <T as Eval>::Output;
+    /// Evaluates the type of a typed expression
+    pub type Evaluate<T: Eval> = <T as Eval>::Output;
 }
 
 pub(crate) trait Sealed {}
