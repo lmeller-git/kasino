@@ -122,6 +122,19 @@ where
 
 impl<'a, Q, S, B, C, const SUB_CAP: usize> BanditHandle<'a, Q, S, B, C, SUB_CAP>
 where
+    Q: Collection,
+    S: Strategy<Q>,
+    C: StorageBackend<StrategyStakes<S, Q>>,
+{
+    /// Returns a reference to this handles gambler
+    #[inline]
+    pub fn gambler(&mut self) -> &mut S::Gambler {
+        &mut self.gambler
+    }
+}
+
+impl<'a, Q, S, B, C, const SUB_CAP: usize> BanditHandle<'a, Q, S, B, C, SUB_CAP>
+where
     B: StorageBackend<Q>,
     Q: Collection,
     S: Strategy<Q>,

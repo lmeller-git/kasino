@@ -15,8 +15,25 @@ rust-version.workspace = true
 # TODO update this to ture once ready
 publish = false
 
+[features]
+default = []
+std = ["alloc"]
+alloc = []
+atomic-fallback = ["portable-atomic/fallback"]
+
 [dependencies]
 kasino = { workspace = true }
+portable-atomic = { version = "1.13.1", default-features = false, features = ["require-cas"] }
+
+[dev-dependencies]
+criterion = { version = "0.8", features = ["html_reports"] }
+crossbeam-queue = "0.3.12"
+rand = { version = "0.10.2", default-features = false }
+core_affinity2 = "0.16.1"
 
 [lints]
 workspace = true
+
+[[bench]]
+name = "main_benchmarks"
+harness = false
