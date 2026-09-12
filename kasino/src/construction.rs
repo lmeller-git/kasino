@@ -211,6 +211,7 @@ where
                     &StorageView::new(&parent.collection_state),
                     &parent.sub_collections,
                     e,
+                    gambler,
                 );
 
                 match r {
@@ -286,6 +287,7 @@ where
                     &StorageView::new(&parent.collection_state),
                     &parent.sub_collections,
                     input,
+                    gambler,
                 );
                 if let Some((r, state)) = r {
                     gambler.on_poll_succ(&parent.collection_state[state]);

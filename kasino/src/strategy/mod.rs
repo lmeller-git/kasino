@@ -66,6 +66,7 @@ pub trait Strategy<Q: Collection> {
         _state: &impl StorageBackend<<Self::Gambler as Hooked>::Stake>,
         bandit_arms: &'c impl StorageBackend<Q>,
         input: <Q::PollSignature as Signature>::Input<'b>,
+        _gambler: &mut Self::Gambler,
     ) -> Option<(<Q::PollSignature as Signature>::Output<'b, 'c>, usize)>
     where
         Q: 'c,
@@ -86,6 +87,7 @@ pub trait Strategy<Q: Collection> {
         _state: &impl StorageBackend<<Self::Gambler as Hooked>::Stake>,
         _bandit_arms: &'c impl StorageBackend<Q>,
         input: <Q::OfferSignature as Signature>::Error<'b, 'c>,
+        _gambler: &mut Self::Gambler,
     ) -> Result<
         (<Q::OfferSignature as Signature>::Output<'b, 'c>, usize),
         <Q::OfferSignature as Signature>::Error<'b, 'c>,

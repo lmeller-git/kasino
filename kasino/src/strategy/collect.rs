@@ -61,6 +61,7 @@ impl<Q: Collection, S: Strategy<Q>> Strategy<Q> for LinearCollectOffer<S> {
         state: &impl StorageBackend<<Self::Gambler as Hooked>::Stake>,
         bandit_arms: &'c impl StorageBackend<Q>,
         input: <<Q as Collection>::PollSignature as Signature>::Input<'b>,
+        gambler: &mut Self::Gambler,
     ) -> Option<(
         <<Q as Collection>::PollSignature as Signature>::Output<'b, 'c>,
         usize,
@@ -68,7 +69,7 @@ impl<Q: Collection, S: Strategy<Q>> Strategy<Q> for LinearCollectOffer<S> {
     where
         Q: 'c,
     {
-        self.0.on_poll_fail(state, bandit_arms, input)
+        self.0.on_poll_fail(state, bandit_arms, input, gambler)
     }
 
     #[inline]
@@ -77,6 +78,7 @@ impl<Q: Collection, S: Strategy<Q>> Strategy<Q> for LinearCollectOffer<S> {
         _state: &impl StorageBackend<<Self::Gambler as Hooked>::Stake>,
         bandit_arms: &'c impl StorageBackend<Q>,
         mut input: <<Q as Collection>::OfferSignature as Signature>::Error<'b, 'c>,
+        _gambler: &mut Self::Gambler,
     ) -> Result<
         (
             <<Q as Collection>::OfferSignature as Signature>::Output<'b, 'c>,
@@ -139,6 +141,7 @@ impl<Q: Collection, S: Strategy<Q>> Strategy<Q> for NoCollectPoll<S> {
         _state: &impl StorageBackend<<Self::Gambler as Hooked>::Stake>,
         _sub_collections: &'c impl StorageBackend<Q>,
         _input: <Q::PollSignature as Signature>::Input<'b>,
+        _gambler: &mut Self::Gambler,
     ) -> Option<(<Q::PollSignature as Signature>::Output<'b, 'c>, usize)>
     where
         Q: 'c,
@@ -152,6 +155,7 @@ impl<Q: Collection, S: Strategy<Q>> Strategy<Q> for NoCollectPoll<S> {
         state: &impl StorageBackend<<Self::Gambler as Hooked>::Stake>,
         bandit_arms: &'c impl StorageBackend<Q>,
         input: <<Q as Collection>::OfferSignature as Signature>::Error<'b, 'c>,
+        gambler: &mut Self::Gambler,
     ) -> Result<
         (
             <<Q as Collection>::OfferSignature as Signature>::Output<'b, 'c>,
@@ -162,7 +166,7 @@ impl<Q: Collection, S: Strategy<Q>> Strategy<Q> for NoCollectPoll<S> {
     where
         Q: 'c,
     {
-        self.0.on_offer_fail(state, bandit_arms, input)
+        self.0.on_offer_fail(state, bandit_arms, input, gambler)
     }
 }
 
@@ -302,6 +306,7 @@ impl<S: Strategy<Q>, Q: Collection, P: InvalidationPolicy> Strategy<Q> for Doubl
         state: &impl StorageBackend<<Self::Gambler as Hooked>::Stake>,
         sub_collections: &'c impl StorageBackend<Q>,
         input: <Q::PollSignature as Signature>::Input<'b>,
+        _gambler: &mut Self::Gambler,
     ) -> Option<(<Q::PollSignature as Signature>::Output<'b, 'c>, usize)>
     where
         Q: 'c,
@@ -334,6 +339,7 @@ impl<S: Strategy<Q>, Q: Collection, P: InvalidationPolicy> Strategy<Q> for Doubl
         state: &impl StorageBackend<<Self::Gambler as Hooked>::Stake>,
         bandit_arms: &'c impl StorageBackend<Q>,
         input: <<Q as Collection>::OfferSignature as Signature>::Error<'b, 'c>,
+        gambler: &mut Self::Gambler,
     ) -> Result<
         (
             <<Q as Collection>::OfferSignature as Signature>::Output<'b, 'c>,
@@ -344,8 +350,12 @@ impl<S: Strategy<Q>, Q: Collection, P: InvalidationPolicy> Strategy<Q> for Doubl
     where
         Q: 'c,
     {
-        self.0
-            .on_offer_fail(&StorageView::new(state), bandit_arms, input)
+        self.0.on_offer_fail(
+            &StorageView::new(state),
+            bandit_arms,
+            input,
+            &mut gambler.gambler,
+        )
     }
 }
 
