@@ -28,12 +28,12 @@ where
 impl<Q, S, B, C, const SUB_CAP: usize> Bandit<Q, S, B, C, SUB_CAP>
 where
     Q: Collection,
-    S: Strategy<Q> + Default,
+    S: Strategy<Q>,
     C: StorageBackend<StrategyStakes<S, Q>>,
 {
-    pub(crate) fn new_with(queues: B, states: C) -> Self {
+    pub(crate) fn new_with_strategy(queues: B, states: C, strategy: S) -> Self {
         Self {
-            strategy: S::default(),
+            strategy,
             sub_collections: queues,
             collection_state: states,
             _p: PhantomData,

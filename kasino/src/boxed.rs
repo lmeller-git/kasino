@@ -98,24 +98,39 @@ pub type BoxedBandit<Q: Collection, S: Strategy<Q>, const SUB_CAP: usize = DEFAU
 impl<Q, S, const SUB_CAP: usize> BoxedBandit<Q, S, SUB_CAP>
 where
     Q: WithCapacity<SUB_CAP> + Collection,
-    S: Strategy<Q> + Default,
+    S: Strategy<Q>,
     StrategyStakes<S, Q>: Default,
 {
-    /// constructs a new `BoxedLop`
+    /// Constructs a new `BoxedBandit` with an initialized strategy.
     #[must_use]
     #[inline]
-    pub fn new(n_cores: usize) -> Self {
+    pub fn with_strategy(strategy: S, n_cores: usize) -> Self {
         const {
             assert!(SUB_CAP > 0, "The capacity per arm should be > 0");
         }
 
         assert!(n_cores > 0, "The number of arms should be > 0");
-        Self::new_with(
+        Bandit::with_strategy(
             BoxedStorage::from_fn_and_size(
                 |_| <Q as WithCapacity<SUB_CAP>>::with_capacity(),
                 n_cores,
             ),
             BoxedStorage::from_fn_and_size(|_| Default::default(), n_cores),
+            strategy,
         )
+    }
+}
+
+impl<Q, S, const SUB_CAP: usize> BoxedBandit<Q, S, SUB_CAP>
+where
+    Q: WithCapacity<SUB_CAP> + Collection,
+    S: Strategy<Q> + Default,
+    StrategyStakes<S, Q>: Default,
+{
+    /// Constructs a new `BoxedBandit`
+    #[must_use]
+    #[inline]
+    pub fn new(n_cores: usize) -> Self {
+        Self::with_strategy(S::default())
     }
 }

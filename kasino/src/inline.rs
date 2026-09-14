@@ -104,6 +104,31 @@ pub type InlineBandit<
 impl<Q: Collection, S, const N: usize, const SUB_CAP: usize> InlineBandit<Q, S, N, SUB_CAP>
 where
     Q: WithCapacity<SUB_CAP>,
+    S: Strategy<Q>,
+    StrategyStakes<S, Q>: Default,
+{
+    /// Constructs a new `InlineBandit` with an initialized strategy.
+    #[must_use]
+    #[inline]
+    pub fn with_strategy(strategy: S) -> Self {
+        const {
+            assert!(
+                N > 0 && SUB_CAP > 0,
+                "The number of arms and the capacity per arm should be > 0"
+            );
+        }
+
+        Bandit::new_with_strategy(
+            InlineStorage::from_fn(|_| <Q as WithCapacity<SUB_CAP>>::with_capacity()),
+            InlineStorage::from_fn(|_| Default::default()),
+            strategy,
+        )
+    }
+}
+
+impl<Q: Collection, S, const N: usize, const SUB_CAP: usize> InlineBandit<Q, S, N, SUB_CAP>
+where
+    Q: WithCapacity<SUB_CAP>,
     S: Strategy<Q> + Default,
     StrategyStakes<S, Q>: Default,
 {
@@ -111,16 +136,7 @@ where
     #[must_use]
     #[inline]
     pub fn new() -> Self {
-        const {
-            assert!(
-                N > 0 && SUB_CAP > 0,
-                "The number of arms and the capacity per arm should be > 0"
-            );
-        }
-        Bandit::new_with(
-            InlineStorage::from_fn(|_| <Q as WithCapacity<SUB_CAP>>::with_capacity()),
-            InlineStorage::from_fn(|_| Default::default()),
-        )
+        Self::with_strategy(S::default())
     }
 }
 
