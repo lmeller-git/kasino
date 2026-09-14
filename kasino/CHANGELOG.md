@@ -11,6 +11,7 @@
 - [CHANGED] cache padding for strategy stakes is now applied at storage level based on the combined padding requests of the fully resolved stake. Add generic machinery for this.
 - [ADDED] add options for specifying padding requests of particular strategy hooks, as well as required associated type on `Hooked` for probagating padding requests upward.
 - [CHANGED] rename `EDCount` to `InteractionCount`.
+- [ADDED] add access to the handles gambler. Add constructor to bandits for pre initialized strategies.
 
 # Version 0.2.0
 
