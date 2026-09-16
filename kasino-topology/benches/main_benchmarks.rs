@@ -185,17 +185,18 @@ macro_rules! bench_kasino_topology_mpmc {
             $group.bench_function(BenchmarkId::new($name, $n), |b| {
                 b.iter_custom(|iters| {
                     let mut total = Duration::ZERO;
+                    let cores = &CoreAffinity2::available_cores().collect::<Vec<_>>();
                     for _ in 0..iters {
                         let bandit: InlineBandit<QAdapter<u64, MT_SUB_CAP>, $Sched, SUB_QUEUE_COUNT, MT_SUB_CAP> =
                             InlineBandit::new();
                         let pollped_total = AtomicUsize::new(0);
                         let start = Instant::now();
                         std::thread::scope(|scope| {
-                            for _ in 0..$n {
+                            for i in 0..$n {
                                 let mut arm = bandit.buy_in();
                                 let mut pop_arm = arm.fork();
                                 scope.spawn(move || {
-                                    arm.gambler().pin_thread().unwrap();
+                                    arm.gambler().pin_thread(cores[i % cores.len()]);
                                     for i in 0..MT_COUNT {
                                         let mut b = Backoff::new();
                                         while arm.offer(i as u64).is_err() {
@@ -206,7 +207,7 @@ macro_rules! bench_kasino_topology_mpmc {
 
                                 let pollped_total = &pollped_total;
                                 scope.spawn(move || {
-                                    pop_arm.gambler().pin_thread().unwrap();
+                                    pop_arm.gambler().pin_thread(cores[i % cores.len()]);
                                     let mut pollped = 0usize;
                                     while pollped < MT_COUNT {
                                         let mut b = Backoff::new();
