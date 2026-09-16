@@ -110,7 +110,7 @@ where
         }
 
         assert!(n_cores > 0, "The number of arms should be > 0");
-        Bandit::with_strategy(
+        Bandit::new_with_strategy(
             BoxedStorage::from_fn_and_size(
                 |_| <Q as WithCapacity<SUB_CAP>>::with_capacity(),
                 n_cores,
@@ -131,6 +131,6 @@ where
     #[must_use]
     #[inline]
     pub fn new(n_cores: usize) -> Self {
-        Self::with_strategy(S::default())
+        Self::with_strategy(S::default(), n_cores)
     }
 }

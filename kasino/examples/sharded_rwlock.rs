@@ -206,6 +206,7 @@ impl<T, S: Strategy<ReaderShard<T>>> Strategy<ReaderShard<T>> for RwLockStrategy
         _state: &impl StorageBackend<<Self::Gambler as Hooked>::Stake>,
         sub_collections: &'c impl StorageBackend<ReaderShard<T>>,
         input: <<ReaderShard<T> as Collection>::PollSignature as Signature>::Input<'b>,
+        _gambler: &mut Self::Gambler,
     ) -> Option<(
         <<ReaderShard<T> as Collection>::PollSignature as Signature>::Output<'b, 'c>,
         usize,
