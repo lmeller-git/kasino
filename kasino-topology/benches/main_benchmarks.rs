@@ -196,6 +196,7 @@ macro_rules! bench_kasino_topology_mpmc {
                                 let mut arm = bandit.buy_in();
                                 let mut pop_arm = arm.fork();
                                 scope.spawn(move || {
+                                    CoreAffinity2::set_affinity(cores[i % cores.len()]).unwrap();
                                     arm.gambler().pin_thread(cores[i % cores.len()]);
                                     for i in 0..MT_COUNT {
                                         let mut b = Backoff::new();
@@ -207,6 +208,7 @@ macro_rules! bench_kasino_topology_mpmc {
 
                                 let pollped_total = &pollped_total;
                                 scope.spawn(move || {
+                                    CoreAffinity2::set_affinity(cores[i % cores.len()]).unwrap();
                                     pop_arm.gambler().pin_thread(cores[i % cores.len()]);
                                     let mut pollped = 0usize;
                                     while pollped < MT_COUNT {
