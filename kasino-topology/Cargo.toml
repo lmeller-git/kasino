@@ -31,6 +31,12 @@ crossbeam-queue = "0.3.12"
 rand = { version = "0.10.2", default-features = false }
 core_affinity2 = "0.16.1"
 
+[target.'cfg(loom)'.dependencies]
+loom = { version = "0.7", features = ["checkpoint"] }
+
+[target.'cfg(shuttle)'.dependencies]
+shuttle = "0.9"
+
 [lints]
 workspace = true
 
