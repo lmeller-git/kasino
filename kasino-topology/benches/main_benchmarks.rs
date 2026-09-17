@@ -15,7 +15,7 @@ use kasino::{
     components::{PopSignature, TryPushSignature},
     strategy::{DCBO, DRA, RandomAccess, RoundRobin},
 };
-use kasino_topology::{CoreID, CorePinned, RuntimeData};
+use kasino_topology::{CoreID, CorePinned, CoreRegistry, RuntimeData, SlicedCorePinned};
 use rand::rngs::SmallRng;
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -179,7 +179,7 @@ macro_rules! bench_kasino_mpmc {
 }
 
 macro_rules! bench_kasino_topology_mpmc {
-    ($group:expr, $name:literal, $Sched:ty, [$($n:literal),+ $(,)?]) => {
+    ($group:expr, $name:literal, $Sched:ty, $strategy_constructor:expr, $per_thread:expr, [$($n:literal),+ $(,)?]) => {
         $(
             $group.throughput(Throughput::Elements(($n * MT_COUNT) as u64));
             $group.bench_function(BenchmarkId::new($name, $n), |b| {
@@ -187,8 +187,9 @@ macro_rules! bench_kasino_topology_mpmc {
                     let mut total = Duration::ZERO;
                     let cores = &CoreAffinity2::available_cores().collect::<Vec<_>>();
                     for _ in 0..iters {
+                        let (_, strategy) = $strategy_constructor();
                         let bandit: InlineBandit<QAdapter<u64, MT_SUB_CAP>, $Sched, SUB_QUEUE_COUNT, MT_SUB_CAP> =
-                            InlineBandit::new();
+                            InlineBandit::with_strategy(strategy);
                         let pollped_total = AtomicUsize::new(0);
                         let start = Instant::now();
                         std::thread::scope(|scope| {
@@ -272,14 +273,25 @@ fn bench_mpmc(c: &mut Criterion) {
     }
     bench_raw_mpmc!([1, 2, 4, 8, 64]);
 
-    bench_kasino_mpmc!(group, "random", RandomAccess<SmallRng>, [1, 2, 4, 8, 64]);
-    bench_kasino_mpmc!(group, "round_robin", RoundRobin, [1, 2, 4, 8, 64]);
-    bench_kasino_mpmc!(group, "dcbo", DCBO<2>, [1, 2, 4, 8, 64]);
-    bench_kasino_mpmc!(group, "dra", DRA<2>, [1, 2, 4, 8, 64]);
+    // bench_kasino_mpmc!(group, "random", RandomAccess<SmallRng>, [1, 2, 4, 8, 64]);
+    // bench_kasino_mpmc!(group, "round_robin", RoundRobin, [1, 2, 4, 8, 64]);
+    // bench_kasino_mpmc!(group, "dcbo", DCBO<2>, [1, 2, 4, 8, 64]);
+    // bench_kasino_mpmc!(group, "dra", DRA<2>, [1, 2, 4, 8, 64]);
     bench_kasino_topology_mpmc!(
         group,
         "core_affinity",
         CorePinned<CoreAffinity2>,
+        || ((), Default::default()),
+        [1, 2, 4, 8, 64]
+    );
+    bench_kasino_topology_mpmc!(
+        group,
+        "core_affinity_sliced",
+        SlicedCorePinned<'_, CoreAffinity2, RandomAccess>,
+        || {
+            let registry = Box::leak(Box::new(CoreRegistry::default()));
+            ((), SlicedCorePinned::new(registry))
+        },
         [1, 2, 4, 8, 64]
     );
 

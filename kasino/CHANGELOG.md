@@ -9,7 +9,7 @@
 - [ADDED] add `on_offer_fail` to `Strategy`, as well as stnadrd strategies for this.
 - [ADDED] add `offer_with_info` to `Bandit`.
 - [CHANGED] cache padding for strategy stakes is now applied at storage level based on the combined padding requests of the fully resolved stake. Add generic machinery for this.
-- [ADDED] add options for specifying padding requests of particular strategy hooks, as well as required associated type on `Hooked` for probagating padding requests upward.
+- [ADDED] add options for specifying padding requests of particular strategy hooks, as well as required associated type on `Hooked` for propagating padding requests upward.
 - [CHANGED] rename `EDCount` to `InteractionCount`.
 - [ADDED] add access to the handles gambler. Add constructor to bandits for pre initialized strategies.
 

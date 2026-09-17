@@ -14,11 +14,7 @@ extern crate alloc;
 
 mod sync;
 
-use core::{
-    hint::spin_loop,
-    marker::PhantomData,
-    ops::{Index, RangeBounds},
-};
+use core::{hint::spin_loop, marker::PhantomData, ops::Index};
 
 use kasino::{
     Collection,
@@ -153,17 +149,20 @@ impl<R> Hooked for CorePinnedGambler<R> {
 }
 
 /// todo
-pub struct SlicedCorePinned<R, S> {
+pub struct SlicedCorePinned<'a, R, S> {
     choose: S,
-    registry: CoreRegistry,
+    registry: &'a CoreRegistry,
     _dat: PhantomData<R>,
 }
 
-impl<R, S: Default> Default for SlicedCorePinned<R, S> {
-    fn default() -> Self {
+impl<'a, R, S: Default> SlicedCorePinned<'a, R, S> {
+    #[inline]
+    #[must_use]
+    /// todo
+    pub fn new(registry: &'a CoreRegistry) -> Self {
         Self {
             choose: Default::default(),
-            registry: CoreRegistry::new(),
+            registry,
             _dat: PhantomData,
         }
     }
@@ -196,12 +195,13 @@ impl<'a, R: RuntimeData, G> SlicedCorePinnedGambler<'a, R, G> {
     /// todo
     #[inline]
     pub fn pin_thread(&mut self, core: CoreID) {
+        self.parent.register_thread(None, core.0);
         self.affinity = core;
     }
 }
 
-impl<Q: Collection, R: RuntimeData, S: Strategy<Q>> Strategy<Q> for SlicedCorePinned<R, S> {
-    type Gambler = SlicedCorePinnedGambler<R, S::Gambler>;
+impl<'a, Q: Collection, R: RuntimeData, S: Strategy<Q>> Strategy<Q> for SlicedCorePinned<'a, R, S> {
+    type Gambler = SlicedCorePinnedGambler<'a, R, S::Gambler>;
 
     #[inline]
     fn choose_offer_arm(
@@ -254,7 +254,7 @@ impl<Q: Collection, R: RuntimeData, S: Strategy<Q>> Strategy<Q> for SlicedCorePi
         SlicedCorePinnedGambler {
             affinity: parent.affinity,
             choosing_gambler: self.choose.fork_gambler(&parent.choosing_gambler),
-            parent: &self.registry,
+            parent: self.registry,
             _dat: PhantomData,
         }
     }
@@ -264,11 +264,12 @@ impl<Q: Collection, R: RuntimeData, S: Strategy<Q>> Strategy<Q> for SlicedCorePi
         SlicedCorePinnedGambler {
             affinity: Default::default(),
             choosing_gambler: self.choose.create_gambler(),
-            parent: &self.registry,
+            parent: self.registry,
             _dat: PhantomData,
         }
     }
 
+    #[inline]
     fn on_poll_fail<'b, 'c>(
         &self,
         state: &impl kasino::storage::StorageBackend<<Self::Gambler as Hooked>::Stake>,
@@ -295,6 +296,7 @@ impl<Q: Collection, R: RuntimeData, S: Strategy<Q>> Strategy<Q> for SlicedCorePi
             .on_poll_fail(state, bandit_arms, input, &mut gambler.choosing_gambler)
     }
 
+    #[inline]
     fn on_offer_fail<'b, 'c>(
         &self,
         state: &impl kasino::storage::StorageBackend<<Self::Gambler as Hooked>::Stake>,
@@ -330,22 +332,26 @@ impl<Q: Collection, R: RuntimeData, S: Strategy<Q>> Strategy<Q> for SlicedCorePi
     }
 }
 
-impl<R, G: Hooked> Hooked for SlicedCorePinnedGambler<R, G> {
+impl<'a, R, G: Hooked> Hooked for SlicedCorePinnedGambler<'a, R, G> {
     type RequestedPadding = G::RequestedPadding;
     type Stake = G::Stake;
 
+    #[inline]
     fn on_offer_succ(&mut self, sub_state: &Self::Stake) {
         self.choosing_gambler.on_offer_succ(sub_state);
     }
 
+    #[inline]
     fn on_offer_fail(&mut self, sub_state: &Self::Stake) {
         self.choosing_gambler.on_offer_fail(sub_state);
     }
 
+    #[inline]
     fn on_poll_succ(&mut self, sub_state: &Self::Stake) {
         self.choosing_gambler.on_poll_succ(sub_state);
     }
 
+    #[inline]
     fn on_poll_fail(&mut self, sub_state: &Self::Stake) {
         self.choosing_gambler.on_poll_fail(sub_state);
     }
@@ -370,6 +376,7 @@ impl<'a, S, B: kasino::storage::StorageBackend<S>> kasino::storage::StorageBacke
         self.len
     }
 
+    #[inline]
     fn iter<'b>(&'b self) -> impl Iterator<Item = &'b S>
     where
         S: 'b,
@@ -377,10 +384,12 @@ impl<'a, S, B: kasino::storage::StorageBackend<S>> kasino::storage::StorageBacke
         self.backend.iter()
     }
 
+    #[inline]
     fn map_to_buffer<U>(&self, f: impl Fn(usize) -> U) -> Self::Rebind<U> {
-        B::map_to_buffer(&self.backend, f)
+        B::map_to_buffer(self.backend, f)
     }
 
+    #[inline]
     fn is_empty(&self) -> bool {
         self.len == 0 || self.backend.is_empty()
     }
@@ -389,6 +398,7 @@ impl<'a, S, B: kasino::storage::StorageBackend<S>> kasino::storage::StorageBacke
 impl<'a, B: Index<usize>> Index<usize> for SliceStorageView<'a, B> {
     type Output = B::Output;
 
+    #[inline]
     fn index(&self, index: usize) -> &Self::Output {
         &self.backend[self.start + index]
     }
@@ -398,6 +408,7 @@ impl<'a, B: IntoIterator> IntoIterator for SliceStorageView<'a, B> {
     type IntoIter = B::IntoIter;
     type Item = B::Item;
 
+    #[inline]
     fn into_iter(self) -> Self::IntoIter {
         todo!()
     }
@@ -410,9 +421,17 @@ pub struct CoreRegistry<const MAX_CORES: usize = 64> {
     lock: AtomicBool,
 }
 
+impl<const MAX_CORES: usize> Default for CoreRegistry<MAX_CORES> {
+    #[inline]
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<const MAX_CORES: usize> CoreRegistry<MAX_CORES> {
     /// todo
     #[inline]
+    #[must_use]
     pub const fn new() -> Self {
         // Const initialization for no-alloc / no-std
         const ZERO: AtomicU16 = AtomicU16::new(0);
@@ -462,6 +481,7 @@ impl<const MAX_CORES: usize> CoreRegistry<MAX_CORES> {
 
 /// todo
 #[inline]
+#[must_use]
 pub fn get_core_slice(
     core_rank: usize,
     total_cores: usize,
