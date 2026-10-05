@@ -14,6 +14,13 @@ pub struct InlineStorage<T, const N: usize> {
     arr: [T; N],
 }
 
+impl<T, const N: usize> From<[T; N]> for InlineStorage<T, N> {
+    #[inline]
+    fn from(value: [T; N]) -> Self {
+        Self { arr: value }
+    }
+}
+
 impl<T: Default, const N: usize> Default for InlineStorage<T, N> {
     #[inline]
     fn default() -> Self {
@@ -120,6 +127,16 @@ where
 
         Bandit::new_with_strategy(
             InlineStorage::from_fn(|_| <Q as WithCapacity<SUB_CAP>>::with_capacity()),
+            InlineStorage::from_fn(|_| Default::default()),
+            strategy,
+        )
+    }
+
+    /// COnstructs a new InlineBandit from raew components
+    #[inline]
+    pub fn from_raw(collections: [Q; N], strategy: S) -> Self {
+        Bandit::new_with_strategy(
+            collections.into(),
             InlineStorage::from_fn(|_| Default::default()),
             strategy,
         )

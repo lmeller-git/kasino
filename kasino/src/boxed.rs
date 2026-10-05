@@ -15,6 +15,13 @@ pub struct BoxedStorage<T> {
     arr: Box<[T]>,
 }
 
+impl<T> FromIterator<T> for BoxedStorage<T> {
+    fn from_iter<A: IntoIterator<Item = T>>(iter: A) -> Self {
+        let arr = iter.into_iter().collect::<Box<[T]>>();
+        Self { arr }
+    }
+}
+
 impl<T: Default> Default for BoxedStorage<T> {
     #[inline]
     fn default() -> Self {
@@ -115,6 +122,18 @@ where
                 |_| <Q as WithCapacity<SUB_CAP>>::with_capacity(),
                 n_cores,
             ),
+            BoxedStorage::from_fn_and_size(|_| Default::default(), n_cores),
+            strategy,
+        )
+    }
+
+    /// Constructs a new BoxedBandit from raw componetns
+    #[inline]
+    pub fn from_raw(collections: impl Iterator<Item = Q>, strategy: S) -> Self {
+        let cores = collections.collect::<BoxedStorage<_>>();
+        let n_cores = cores.len();
+        Bandit::new_with_strategy(
+            cores,
             BoxedStorage::from_fn_and_size(|_| Default::default(), n_cores),
             strategy,
         )
