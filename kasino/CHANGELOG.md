@@ -1,3 +1,7 @@
+# Version 0.3.1
+
+- [ADDED] add `from_raw` to `InlineBandit` and `BoxedBandit`.
+
 # Version 0.3.0
 
 - [BREAKING] change names of invalidation policies for `DoubleCollect`.
