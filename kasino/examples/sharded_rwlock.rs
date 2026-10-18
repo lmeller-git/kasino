@@ -134,8 +134,8 @@ impl<T> Collection for ReaderShard<T> {
         if old_writer {
             return Err(());
         }
-        self.0.fetch_add(1, Ordering::Release);
-        let writer_now = item.writer.load(Ordering::Acquire);
+        self.0.fetch_add(1, Ordering::SeqCst);
+        let writer_now = item.writer.load(Ordering::SeqCst);
         if writer_now {
             self.0.fetch_sub(1, Ordering::Release);
             Err(())
@@ -155,7 +155,7 @@ impl<T> Collection for ReaderShard<T> {
         <Self::PollSignature as Signature>::Output<'a, 'b>,
         <Self::PollSignature as Signature>::Error<'a, 'b>,
     > {
-        Err(self.0.load(Ordering::Acquire))
+        Err(self.0.load(Ordering::SeqCst))
     }
 
     fn len(&self) -> usize {
@@ -227,7 +227,7 @@ impl<T, S: Strategy<ReaderShard<T>>> Strategy<ReaderShard<T>> for RwLockStrategy
             return None;
         }
 
-        if input.writer.swap(true, Ordering::AcqRel) {
+        if input.writer.swap(true, Ordering::SeqCst) {
             return None;
         }
 
